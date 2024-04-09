@@ -1,3 +1,6 @@
+import java.util.List;
+import java.util.Map;
+
 /**
  * 사용자 입력을 최전선에서 받는 클래스
  */
@@ -21,8 +24,10 @@ public class TextQuery {
             }
             switch (command) {
                 case 1:
-                    Process1_1();
-                    Process1_2();
+                    String tableName = Process1_1();
+                    Map<String,Integer> columns= Process1_2();
+                    List<String> pkColumns= Process1_3(columns);
+                    //여기까지 모든 입력이 정상적이면, 실제 테이블 생성 및 메타데이터 생성.
                     _queryEvaluationEngine.CreateTable();
                     break;
                 case 2:
@@ -54,14 +59,20 @@ public class TextQuery {
     }
     
     //region '1. 테이블 생성' 관련 print 및 input처리 함수
-    private void Process1_1(){
-        System.out.print("생성할 테이블의 이름을 입력(30 바이트 이내): ");
-        _inputValidator.Get1_1Input();
+    
+    private String Process1_1(){
+        System.out.print("생성할 테이블의 이름을 입력(30글자 이내): ");
+        return _inputValidator.Get1_1Input();
     }
     
-    private void Process1_2(){
-        System.out.print("컬럼 이름을 입력(30 바이트 이내) or 컬럼 입력이 끝났다면 0을 입력: ");
+    private Map<String, Integer> Process1_2(){
+        return _inputValidator.Get1_2Input();
     }
+    
+    private List<String> Process1_3(Map<String, Integer> columns){
+        return _inputValidator.Get1_3Input(columns);
+    }
+
     //endregion
     
     

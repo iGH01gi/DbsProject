@@ -32,6 +32,24 @@ public class QueryEvaluationEngine {
     }
 
     public void InsertTuple(String tableName, List<String> newColumnValues) {
+        //헤더 레코드에 담겨있는 값을 읽어옴
+        int headerRecordValue = -1;
+        byte[] firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
+        if(firstBlock==null) {
+            System.out.println("##해당 파일의 헤더 레코드를 읽어오는데 실패함");
+            return;
+        }
+        else{
+            headerRecordValue = _bufferManager.GetHeaderRecordValue(firstBlock);
+        }
+        
+        //헤더 레코드에 담겨있는 값으로, 실제 레코드를 저장할 위치를 계산
+        
+        
+        //레코드를 저장할 위치에 레코드를 저장
+        
+        
+        //헤더 레코드에 저장된 값을 업데이트
     }
 
     public void DeleteTuple() {

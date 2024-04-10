@@ -115,7 +115,7 @@ public class TextQuery {
     private List<String> Process2_2(String tableName){
         //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
         LinkedHashMap<String,String> columnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
-        if(_queryEvaluationEngine.PrintColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
+        if(!_queryEvaluationEngine.PrintColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
             return new ArrayList<>();
         }
         else{

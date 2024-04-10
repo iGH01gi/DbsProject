@@ -193,15 +193,18 @@ public class InputValidator {
                 continue;
             }
 
+            boolean isValid = true;
             for (int i = 0; i < columnInfo.size(); i++) {
                 //입력받은 값이 글자수 제한을 넘는지 확인
                 if (columnValues[i].length() > Integer.parseInt((String) columnInfo.values().toArray()[i])) {
-                    System.out.println("글자수 제한을 초과한 컬럼값이 있음");
-                    continue;
+                    String columnName = (String) columnInfo.keySet().toArray()[i];
+                    System.out.println(columnName + " 컬럼의 길이 제한(" + columnInfo.get(columnName) + ")을 초과함");
+                    isValid = false;
+                    break;
                 }
             }
-            
-            return Arrays.asList(columnValues);
+            if(isValid)
+                return Arrays.asList(columnValues);
         }
     }
 

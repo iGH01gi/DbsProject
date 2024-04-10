@@ -1,3 +1,4 @@
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -44,12 +45,12 @@ public class BufferManager {
      * 파일에 블록을 쓰는 메소드
      * @param file 파일 객체
      * @param block 블록 바이트 배열
-     * @param blockPosition 파일에 쓰일 블록의 위치(0부터 시작)
+     * @param blockIndex 파일에서 몇번째 블록에 쓸지(0부터 시작)
      */
-    public void WriteBlockToFile(File file, byte[] block, int blockPosition) {
+    public void WriteBlockToFile(File file, byte[] block, int blockIndex) {
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            raf.seek(block.length * blockPosition);
+            raf.seek(block.length * blockIndex);
             raf.write(block);
             raf.close();
         } catch (IOException e) {
@@ -91,5 +92,57 @@ public class BufferManager {
         //block에 headerRecord 쓰기
         byte[] intBytes = ByteBuffer.allocate(4).putInt(value).array();
         System.arraycopy(intBytes, 0, block, 0, intBytes.length);
+    }
+    
+    /**
+     * 미리 읽어온 파일의 첫번째 블록에서<br>
+     * 헤더 레코드의 값을 읽어오는 메소드
+     * @param block 미리 읽어온 파일의 첫번째 블록
+     * @return 헤더 레코드에 저장된 값(= 다음 free record의 위치)
+     */
+    public int GetHeaderRecordValue(byte[] block) {
+        byte[] intBytes = new byte[4];
+        System.arraycopy(block, 0, intBytes, 0, intBytes.length);
+        int value = ByteBuffer.wrap(intBytes).getInt();
+        return value;
+    }
+    
+    /**
+     * 파일로부터 블록을 읽어오는 메소드
+     * @param tableName 테이블 이름(=파일명)
+     * @param blockIndex 파일에서 몇번째 블록을 읽어올지(0부터 시작)
+     * @return 읽어온 블록의 바이트 배열
+     */
+    public byte[] ReadBlockFromFile(String tableName, int blockIndex) {
+        try {
+            File file = new File(FILE_PATH + tableName);
+            RandomAccessFile raf = new RandomAccessFile(file, "r");
+            byte[] block = new byte[BLOCK_SIZE];
+            raf.seek(block.length * blockIndex);
+            int readBytes= raf.read(block);
+            raf.close();
+            
+            if(readBytes == -1){
+                System.out.println("파일의 마지막에서부터 블록을 읽으려고 시도했음!");
+            }
+            else if(readBytes != BLOCK_SIZE){
+                System.out.println("블록이 전부 읽히지 않았음. 읽은 바이트 수: " + readBytes);
+                System.out.println("블록 계산식 점검 필요");
+            }
+            else {
+                return block;
+            }
+            
+        } catch (IOException e) {
+            if(e instanceof EOFException){
+                System.out.println("파일의 범위를 넘어서는 곳부터 읽으려고 시도했습니다.");
+            }
+            else {
+                System.out.println("File에서 block을 읽는데 실패했습니다.");
+            }
+            e.printStackTrace();
+        }
+        
+        return null;
     }
 }

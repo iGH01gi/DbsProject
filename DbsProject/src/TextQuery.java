@@ -28,7 +28,7 @@ public class TextQuery {
                     Map<String,Integer> columns= Process1_2();
                     List<String> pkColumns= Process1_3(columns);
                     //여기까지 모든 입력이 정상적이면, 실제 테이블 생성 및 메타데이터 생성.
-                    _queryEvaluationEngine.CreateTable();
+                    _queryEvaluationEngine.CreateTable(tableName, columns, pkColumns);
                     break;
                 case 2:
                     _queryEvaluationEngine.InsertTuple();
@@ -54,14 +54,15 @@ public class TextQuery {
      * 사용자에게 메뉴를 출력하는 함수
      */
     private void PrintMenu() {
-        System.out.println("\n\n0. 종료 1. 테이블 생성 2. 튜플 삽입 3. 튜플 삭제 4. 특정 테이블의 전체 튜플 검색 5.특정 테이블의 튜플 한 개 검색");
+        System.out.println("\n\n------------------------------------------------------------------------------------------------------");
+        System.out.println("0. 종료 1. 테이블 생성 2. 튜플 삽입 3. 튜플 삭제 4. 특정 테이블의 전체 튜플 검색 5.특정 테이블의 튜플 한 개 검색");
         System.out.print("원하는 기능의 번호를 입력: ");
     }
     
     //region '1. 테이블 생성' 관련 print 및 input처리 함수
     
     private String Process1_1(){
-        System.out.print("생성할 테이블의 이름을 입력(30글자 이내): ");
+        System.out.print("\n생성할 테이블의 이름을 입력(30글자 이내): ");
         return _inputValidator.Get1_1Input();
     }
     
@@ -75,6 +76,20 @@ public class TextQuery {
 
     //endregion
     
+    //region '2. 튜플 삽입' 관련 print 및 input처리 함수
     
+    private void Process2_1(){
+        
+        //튜플을 삽입할 테이블명 입력받음
+         String tableName = _inputValidator.Get2_1Input();
+         
+         //테이블명이 존재하는지 확인
+        if (!_queryEvaluationEngine.IsTableExist(tableName)) {
+            System.out.println("존재하지 않는 테이블명입니다.");
+            return;
+        }
+    }
+    
+    //endregion
     
 }

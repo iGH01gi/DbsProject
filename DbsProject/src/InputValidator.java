@@ -12,6 +12,7 @@ public class InputValidator {
 
         try {
             input = scanner.nextInt();
+            scanner.nextLine(); // consume the newline
         } catch (Exception e) {
             return -1;
         }
@@ -54,18 +55,17 @@ public class InputValidator {
             int remainBytes = 140 - sumBytes;
             
             if(remainBytes <= 0) {
-                System.out.println("더 이상 컬럼을 입력할 수 없음. 지금까지 입력받은 컬럼정보로 테이블을 생성...");
+                System.out.println("\n###더 이상 컬럼을 입력할 수 없음. 지금까지 입력받은 컬럼정보로 테이블을 생성...###");
                 return columns;
             }
-
+            System.out.println("\n");
             if(columns.size() > 0) {
-                System.out.println("\n<<현재까지 입력된 컬럼 정보>>");
+                System.out.println("<<현재까지 입력된 컬럼 정보>>");
                 for (Map.Entry<String, Integer> entry : columns.entrySet()) {
                     System.out.println("컬럼 이름: " + entry.getKey() + ", 크기(bytes): " + entry.getValue());
                 }
             }
             
-            scanner.
             System.out.print("컬럼 이름을 입력(30글자 이내) or 컬럼 입력이 끝났다면 0을 입력: ");
             inputColName = scanner.nextLine();
 
@@ -86,8 +86,8 @@ public class InputValidator {
                         continue;
                     }
                     
-                    System.out.println("Block의 크기는 140바이트로 설정되어 있음");
-                    System.out.println("입력받을 컬럼의 크기는 현재 최대 " + remainBytes + "bytes까지 가능함");
+                    System.out.println("- Block의 크기는 140바이트로 설정되어 있음");
+                    System.out.println("- 입력받을 컬럼의 크기는 현재 최대 " + remainBytes + "bytes까지 가능함");
                     System.out.print("컬럼의 크기를 입력: ");
                     
                     while (true) {
@@ -98,6 +98,7 @@ public class InputValidator {
                         }
                         
                         inputColByte = scanner.nextInt();
+                        scanner.nextLine(); // consume the newline
                         
                         if(inputColByte > remainBytes) {
                             System.out.print("입력한 크기가 남은 크기보다 큼. 다시 입력: ");
@@ -119,6 +120,7 @@ public class InputValidator {
         Scanner scanner = new Scanner(System.in);
         
         while (true) {
+            System.out.println("\n");
             System.out.println("<<현재 컬럼 정보>>");
             for (Map.Entry<String, Integer> entry : columns.entrySet()) {
                 System.out.println("컬럼 이름: " + entry.getKey() + ", 크기(bytes): " + entry.getValue());
@@ -148,6 +150,26 @@ public class InputValidator {
         
         return pkColumns;
     }
+    //endregion
+    
+    //region '2. 튜플 삽입' 관련 입력을 받는 함수들
+    
+    public String Get2_1Input() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+        
+        while (true) {
+            System.out.print("튜플을 삽입 할 테이블명을 입력(30글자 이내): ");
+            input = scanner.nextLine();
+            
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                return input;
+            }
+        }
+    }
+    
     //endregion
    
 }

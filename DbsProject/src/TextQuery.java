@@ -1,3 +1,4 @@
+import java.lang.annotation.ElementType;
 import java.util.List;
 import java.util.Map;
 
@@ -23,16 +24,22 @@ public class TextQuery {
                 break;
             }
             switch (command) {
-                case 1:
+                case 1: {
                     String tableName = Process1_1();
-                    Map<String,Integer> columns= Process1_2();
-                    List<String> pkColumns= Process1_3(columns);
+                    Map<String, Integer> columns = Process1_2();
+                    List<String> pkColumns = Process1_3(columns);
                     //여기까지 모든 입력이 정상적이면, 실제 테이블 생성 및 메타데이터 생성.
                     _queryEvaluationEngine.CreateTable(tableName, columns, pkColumns);
                     break;
-                case 2:
+                }
+                case 2: {
+                    String tableName = Process2_1();
+                    if(tableName == null){ //테이블이 아무것도 존재하지 않을 경우
+                        break;
+                    }
                     _queryEvaluationEngine.InsertTuple();
                     break;
+                }
                 case 3:
                     _queryEvaluationEngine.DeleteTuple();
                     break;
@@ -78,15 +85,23 @@ public class TextQuery {
     
     //region '2. 튜플 삽입' 관련 print 및 input처리 함수
     
-    private void Process2_1(){
-        
-        //튜플을 삽입할 테이블명 입력받음
-         String tableName = _inputValidator.Get2_1Input();
-         
-         //테이블명이 존재하는지 확인
-        if (!_queryEvaluationEngine.IsTableExist(tableName)) {
-            System.out.println("존재하지 않는 테이블명입니다.");
-            return;
+    private String Process2_1(){
+        while(true) {
+            //현재 존재하는 테이블명들을 출력하고 true리턴. 없을시 false 리턴
+            if (_queryEvaluationEngine.PrintAllTableNames() == false){
+                return null;
+            }
+            
+            //튜플을 삽입할 테이블명 입력받음
+            String tableName = _inputValidator.Get2_1Input();
+            
+            //테이블이 존재하는지 확인
+            if (_queryEvaluationEngine.IsTableExist(tableName)) {
+                return tableName;
+            }
+            else {
+                System.out.println("올바른 테이블명을 다시 입력!!");
+            }
         }
     }
     

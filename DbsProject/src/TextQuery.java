@@ -100,7 +100,7 @@ public class TextQuery {
                 return tableName;
             }
             else {
-                System.out.println("올바른 테이블명을 다시 입력!!");
+                System.out.println("올바른 테이블명을 다시 입력!!\n");
             }
         }
     }

@@ -10,7 +10,7 @@ public class MetaDataManager {
     private static final String PASSWORD = "igh17172080";
     private static final String _relationMetaTable = "relation_metadata"; //테이블 메타데이터를 저장하는 테이블 이름
     private static final String _attributeMetaTable = "attribute_metadata"; //컬럼 메타데이터를 저장하는 테이블 이름
-    private static final String FILE_PATH = "/files/"; //파일들이 저장될 경로
+    private static final String FILE_PATH = "files/"; //파일들이 저장될 경로
     private Connection _connection;
 
     public MetaDataManager() {
@@ -81,7 +81,7 @@ public class MetaDataManager {
      */
     public List<LinkedHashMap<String, String>> SearchTable(String tableName, List<String> condition) {
 
-        List<LinkedHashMap<String, String>> list;
+        List<LinkedHashMap<String, String>> list = new ArrayList<>();
         ResultSet rs = null;
 
         try {
@@ -92,12 +92,12 @@ public class MetaDataManager {
 
                 try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
                     rs = pstmt.executeQuery();
+                    list = ResultSetToResultList(rs);
                 } catch (SQLException e) {
-                    System.out.println("Search table failed!");
-                    e.printStackTrace();
+                    /*System.out.println("Search table failed!");
+                    e.printStackTrace();*/
                 }
-
-                list = ResultSetToResultList(rs);
+                
                 return list;
             } else {
                 //where 절이 필요할 경우, 조건에 맞는 결과셋을 리턴
@@ -111,12 +111,12 @@ public class MetaDataManager {
 
                 try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
                     rs = pstmt.executeQuery();
+                    list = ResultSetToResultList(rs);
                 } catch (SQLException e) {
-                    System.out.println("Search table with condition failed!");
-                    e.printStackTrace();
+                    /*System.out.println("Search table with condition failed!");
+                    e.printStackTrace();*/
                 }
                 
-                list = ResultSetToResultList(rs);
                 return list;
             }
         } finally {
@@ -124,8 +124,8 @@ public class MetaDataManager {
                 try {
                     rs.close();
                 } catch (SQLException e) {
-                    System.out.println("ResultSet close failed!");
-                    e.printStackTrace();
+                    /*System.out.println("ResultSet close failed!");
+                    e.printStackTrace();*/
                 }
             }
         }

@@ -51,15 +51,15 @@ public class QueryEvaluationEngine {
      * @return 테이블이 존재하면 true, 존재하지 않으면 false
      */
     public boolean IsTableExist(String tableName) {
-        boolean isExist = false;
+        boolean isExist = true;
         
         //메타데이터가 존재하는지 확인
         List<String> condition = new ArrayList<>();
-        condition.add("relation_name = " + tableName);
+        condition.add("relation_name = " +  "'" + tableName +"'");
         List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable,condition);
         try {
             if(rl.isEmpty()) {
-                System.out.println("해당 테이블에대한 메타데이터가 없음");
+                System.out.println("##해당 테이블에대한 메타데이터가 없음");
                 isExist = false;
             }
         } catch (Exception e) {
@@ -69,9 +69,9 @@ public class QueryEvaluationEngine {
         //실제 파일이 존재하는지 확인
         File file = new File(FILE_PATH + tableName);
         if(file.exists()) {
-            isExist = true;
+            
         } else {
-            System.out.println("해당 테이블 파일이 없음. ("+ FILE_PATH + tableName + " 파일을 찾을 수 없음)");
+            System.out.println("##해당 테이블 파일이 없음. ("+ FILE_PATH + tableName + " 파일을 찾을 수 없음)");
             isExist = false;
         }
         
@@ -88,36 +88,32 @@ public class QueryEvaluationEngine {
         List<String> tableNames = new ArrayList<>();
 
         List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable, null);
-        try {
-            if (rl.isEmpty()) {
+
+        if (rl.isEmpty()) {
+            System.out.println("[현재 존재하는 테이블이 없음]");
+            return false;
+        } else {
+            for (int i = 0; i < rl.size(); i++) {
+                //메타데이터 검색 결과리스트에서, 현재 row의 relation_name을 가져옴
+                String tableName = rl.get(i).get("relation_name");
+
+                //실제 파일이 존재해야지만 출력가능
+                File file = new File(FILE_PATH + tableName);
+                if (file.exists()) {
+                    tableNames.add(tableName);
+                }
+            }
+
+            if (tableNames.size() == 0) {
                 System.out.println("[현재 존재하는 테이블이 없음]");
                 return false;
             } else {
-                for(int i=0; i<rl.size(); i++) {
-                    //메타데이터 검색 결과리스트에서, 현재 row의 relation_name을 가져옴
-                    String tableName = rl.get(i).get("relation_name");
-                    
-                    //실제 파일이 존재해야지만 출력가능
-                    File file = new File(FILE_PATH + tableName);
-                    if (file.exists()) {
-                        tableNames.add(tableName);
-                    }
+                System.out.println("[현재 존재하는 테이블 목록]");
+                for (String tableName : tableNames) {
+                    System.out.println(" -> " + tableName);
                 }
-                
-                if (tableNames.size() == 0) {
-                    System.out.println("[현재 존재하는 테이블이 없음]");
-                    return false;
-                } else {
-                    System.out.println("[현재 존재하는 테이블 목록]");
-                    for (String tableName : tableNames) {
-                        System.out.println(" -> " + tableName);
-                    }
-                    return true;
-                }
+                return true;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
         }
     }
         

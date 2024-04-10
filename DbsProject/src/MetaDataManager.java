@@ -77,9 +77,10 @@ public class MetaDataManager {
      *
      * @param tableName 메타데이터 테이블의 이름
      * @param condition Where 절에 사용할 조건식들 (ex. "relation_name = '테이블이름'"). 필요없을 경우 null
+     * @param orderCondition Order by 절에 사용할 조건식 (ex. "attribute_name DESC"). 필요없을 경우 null
      * @return ResultList을 반환 (없을시 빈 리스트 반환)
      */
-    public List<LinkedHashMap<String, String>> SearchTable(String tableName, List<String> condition) {
+    public List<LinkedHashMap<String, String>> SearchTable(String tableName, List<String> condition, String orderCondition) {
 
         List<LinkedHashMap<String, String>> list = new ArrayList<>();
         ResultSet rs = null;
@@ -88,6 +89,11 @@ public class MetaDataManager {
             //where 절이 필요없을 경우, 테이블 전체를 결과셋으로 리턴
             if (condition == null) {
                 String sql = "SELECT * FROM " + tableName;
+                
+                //order by 절이 필요할 경우
+                if(orderCondition != null){
+                    sql += " ORDER BY " + orderCondition;
+                }
 
 
                 try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
@@ -107,6 +113,11 @@ public class MetaDataManager {
                     if (i != condition.size() - 1) {
                         sql += " AND ";
                     }
+                }
+
+                //order by 절이 필요할 경우
+                if(orderCondition != null){
+                    sql += " ORDER BY " + orderCondition;
                 }
 
                 try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
@@ -158,6 +169,7 @@ public class MetaDataManager {
 
         return list;
     }
+    
 
 
 }

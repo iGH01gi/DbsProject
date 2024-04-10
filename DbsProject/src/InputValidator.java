@@ -169,7 +169,51 @@ public class InputValidator {
             }
         }
     }
-    
+
+    /**
+     * 튜플을 삽입할 컬럼의 값을 입력받는 함수
+     * @param columnInfo 컬럼 정보 (key:컬럼명, value:글자수 제한) (순서 보장됨)
+     * @return 입력받은 컬럼 값들의 list
+     */
+    public List<String> Get2_2Input(LinkedHashMap<String,String> columnInfo) {
+        Scanner scanner = new Scanner(System.in);
+        
+        while(true){
+            System.out.println("\n컬럼 순서에 맞게 값을 ,로 구분하여 입력(영문,숫자,_ 만 입력 가능): ");
+            String input = scanner.nextLine();
+            if(!IsASCII(input)){
+                System.out.println("영문,숫자,_ 만 입력 가능함");
+                continue;
+            }
+            
+            String[] columnValues = input.split(",");
+            
+            if(columnValues.length != columnInfo.size()){
+                System.out.println("입력한 값의 개수가 컬럼의 개수와 다름");
+                continue;
+            }
+
+            for (int i = 0; i < columnInfo.size(); i++) {
+                //입력받은 값이 글자수 제한을 넘는지 확인
+                if (columnValues[i].length() > Integer.parseInt((String) columnInfo.values().toArray()[i])) {
+                    System.out.println("글자수 제한을 초과한 컬럼값이 있음");
+                    continue;
+                }
+            }
+            
+            return Arrays.asList(columnValues);
+        }
+    }
+
+    private boolean IsASCII(String str) {
+        for (char c : str.toCharArray()) {
+            if (c < 0 || c > 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     //endregion
    
 }

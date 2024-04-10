@@ -1,4 +1,6 @@
 import java.lang.annotation.ElementType;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,10 +36,15 @@ public class TextQuery {
                 }
                 case 2: {
                     String tableName = Process2_1();
-                    if(tableName == null){ //테이블이 아무것도 존재하지 않을 경우
-                        break;
+                    if(tableName == null){ 
+                        break; //테이블이 아무것도 존재하지 않을 경우
                     }
-                    _queryEvaluationEngine.InsertTuple();
+                    List<String> newColumnValues = Process2_2(tableName);
+                    if(newColumnValues.isEmpty()) {
+                        break; //컬럼 메타데이터가 없는 비정상적인 상황
+                    }
+                    //여기까지 모든 입력이 정상적이면, 실제 튜플 삽입
+                    _queryEvaluationEngine.InsertTuple(tableName, newColumnValues);
                     break;
                 }
                 case 3:
@@ -105,6 +112,24 @@ public class TextQuery {
         }
     }
     
+    private List<String> Process2_2(String tableName){
+        //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
+        LinkedHashMap<String,String> columnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
+        if(_queryEvaluationEngine.PrintColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
+            return new ArrayList<>();
+        }
+        else{
+            columnInfo = _queryEvaluationEngine.GetColumnInfo(tableName);
+            if(columnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
+                return new ArrayList<>();
+            }
+        }
+        
+        //튜플 삽입할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
+        List<String> newColumnValues = _inputValidator.Get2_2Input(columnInfo);
+        
+        return newColumnValues;
+    }
     //endregion
     
 }

@@ -1,5 +1,4 @@
 import java.io.File;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,7 +31,7 @@ public class QueryEvaluationEngine {
         _bufferManager.CreateFile(tableName, columns);
     }
 
-    public void InsertTuple() {
+    public void InsertTuple(String tableName, List<String> newColumnValues) {
     }
 
     public void DeleteTuple() {
@@ -56,7 +55,7 @@ public class QueryEvaluationEngine {
         //메타데이터가 존재하는지 확인
         List<String> condition = new ArrayList<>();
         condition.add("relation_name = " +  "'" + tableName +"'");
-        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable,condition);
+        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable, condition,null);
         try {
             if(rl.isEmpty()) {
                 System.out.println("##해당 테이블에대한 메타데이터가 없음");
@@ -87,7 +86,7 @@ public class QueryEvaluationEngine {
 
         List<String> tableNames = new ArrayList<>();
 
-        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable, null);
+        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable, null, null);
 
         if (rl.isEmpty()) {
             System.out.println("[현재 존재하는 테이블이 없음]");
@@ -114,6 +113,53 @@ public class QueryEvaluationEngine {
                 }
                 return true;
             }
+        }
+    }
+    
+    /**
+     * 테이블의 컬럼명을 출력 (글자제한도 포함해서)
+     * @param tableName 테이블명
+     * @return 컬럼메타데이터가 있어서 정상출력이면 true, 없으면 false
+     */
+    public boolean PrintColumnNames(String tableName) {
+        List<String> condition = new ArrayList<>();
+        condition.add("relation_name = " +  "'" + tableName +"'");
+        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_attributeMetaTable,condition, "position ASC");
+        int rows = rl.size();
+        
+        if(rl.isEmpty()) {
+            System.out.println("##해당 테이블에대한 컬럼 메타데이터가 없음");
+            return false;
+        } else {
+            System.out.println("[ " + tableName + " 테이블의 컬럼 목록 ]");
+            for (int i = 0; i < rows; i++) {
+                //rl.get(i)에서 attribute_name을 가져와서 출력
+                System.out.println(" -> 컬럼명: " + rl.get(i).get("attribute_name") + ", 글자수 제한: " + rl.get(i).get("length"));
+            }
+            return true;
+        }
+    }
+    
+    /**
+     * 테이블의 컬럼정보(key:컬럼명, value:글자수 제한)를 가져오는 메소드
+     * @param tableName 테이블명
+     * @return 순서가 보장되는 컬럼정보 맵. 메타데이터에 없으면 빈 맵 반환
+     */
+    public LinkedHashMap<String,String> GetColumnInfo(String tableName) {
+        List<String> condition = new ArrayList<>();
+        condition.add("relation_name = " +  "'" + tableName +"'");
+        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_attributeMetaTable,condition, "position ASC");
+        int rows = rl.size();
+
+        LinkedHashMap<String,String> columnInfo = new LinkedHashMap<>();
+
+        if(rl.isEmpty()) {
+            return columnInfo;
+        } else {
+            for (int i = 0; i < rows; i++) {
+                columnInfo.put(rl.get(i).get("attribute_name"), rl.get(i).get("length"));
+            }
+            return columnInfo;
         }
     }
         

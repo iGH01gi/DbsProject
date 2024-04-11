@@ -1,4 +1,5 @@
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +32,7 @@ public class QueryEvaluationEngine {
         _bufferManager.CreateFile(tableName, columns);
     }
 
-    public void InsertTuple(String tableName, List<String> newColumnValues) {
+    public void InsertTuple(String tableName, LinkedHashMap<String,String> newColumnValueInfo) {
         //헤더 레코드에 담겨있는 값을 읽어옴
         int headerRecordValue = -1;
         byte[] firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
@@ -58,7 +59,7 @@ public class QueryEvaluationEngine {
         //따라서 새로운 block을 '생성'하고 -> 생성한 block에 레코드를 삽입 -> block을 파일에 write -> 헤더 레코드에 새로운 값(기존 값+1)을 저장
         if(_bufferManager.BLOCK_SIZE * blockIndex >= GetFileSize(tableName)) {
             byte[] newBlock = _bufferManager.CreateBlock();
-            if(!_bufferManager.WriteRecordToBlock(newBlock, recordLength, newColumnValues, recordIndex)){
+            if(!_bufferManager.WriteRecordToBlock(newBlock, recordLength, newColumnValueInfo, recordIndex)){
                 System.out.println("##레코드를 쓰는데 실패함");
                 return;
             }
@@ -75,7 +76,7 @@ public class QueryEvaluationEngine {
         //따라서 해당 block을 '읽고' -> block에 레코드를 삽입 -> block을 파일에 write -> 헤더 레코드에 새로운 값(기존 값+1)을 저장
         else if (_bufferManager.GetFreeRecordValue(_bufferManager.ReadBlockFromFile(tableName, blockIndex), recordIndex, recordLength) == 0) {
             byte[] block = _bufferManager.ReadBlockFromFile(tableName, blockIndex);
-            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValues, recordIndex)){
+            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValueInfo, recordIndex)){
                 System.out.println("##레코드를 쓰는데 실패함");
                 return;
             }
@@ -94,7 +95,7 @@ public class QueryEvaluationEngine {
         else {
             byte[] block = _bufferManager.ReadBlockFromFile(tableName, blockIndex);
             int existingFreeRecordValue = _bufferManager.GetFreeRecordValue(block, recordIndex, recordLength);
-            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValues, recordIndex)){
+            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValueInfo, recordIndex)){
                 System.out.println("##레코드를 쓰는데 실패함");
                 return;
             }
@@ -130,6 +131,7 @@ public class QueryEvaluationEngine {
         for (Map.Entry<String, String> entry : columnInfo.entrySet()) {
             System.out.print(entry.getKey() + "  |  ");
         }
+        System.out.println();
         
         //파일에서 block을 읽어오고, block내의 모든 레코드를 출력
         // 파일의 block의 총 갯수
@@ -139,8 +141,13 @@ public class QueryEvaluationEngine {
         for(int i=0; i<blockSum; i++){
             byte[] block = _bufferManager.ReadBlockFromFile(tableName, i);
             for(int j=0; j<blockingFactor; j++){
-               //TODO : free record인지 아닌지 확인하는 로직 필요
+                byte[] record = _bufferManager.ReadRecordFromBlock(block, recordLength, j);
+                if(record != null && !_bufferManager.IsFreeRecord(record)){
+                    PrintRecord(record, columnInfo);
+                }
+                System.out.println();
             }
+            System.out.println(i + "번째 블록의 레코드 출력 완료");
         }
         
     }
@@ -292,6 +299,30 @@ public class QueryEvaluationEngine {
     public long GetFileSize(String tableName) {
         File file = new File(FILE_PATH + tableName);
         return (long)file.length();
+    }
+    
+    /**
+     * 레코드를 출력하는 메소드
+     * @param record 레코드 바이트 배열
+     * @param columnInfo 컬럼정보(key:컬럼명, value:글자수 제한)
+     */
+    public void PrintRecord(byte[] record, LinkedHashMap<String,String> columnInfo) {
+        int start = 0;
+        for (int k = 0; k < columnInfo.size(); k++) {
+            int currColLen = Integer.parseInt(columnInfo.values().toArray()[k].toString());
+            String str = new String();
+            
+            for(int i = 0; i<currColLen; i++){
+                if(record[start+i] == (byte) 0){ //공백문자처리
+                    str += " ";
+                }
+                else{
+                    str += Character.toString((char)record[start+i]);
+                }
+            }
+            System.out.printf(str+ "  |  ");
+            start += currColLen;
+        }
     }
         
 }

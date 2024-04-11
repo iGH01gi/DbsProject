@@ -173,9 +173,9 @@ public class InputValidator {
     /**
      * 튜플을 삽입할 컬럼의 값을 입력받는 함수
      * @param columnInfo 컬럼 정보 (key:컬럼명, value:글자수 제한) (순서 보장됨)
-     * @return 입력받은 컬럼 값들의 list
+     * @return key: 컬럼값 , value: 해당 컬럼이 레코드에서 차지하는 길이
      */
-    public List<String> Get2_2Input(LinkedHashMap<String,String> columnInfo) {
+    public LinkedHashMap<String,String> Get2_2Input(LinkedHashMap<String,String> columnInfo) {
         Scanner scanner = new Scanner(System.in);
         
         while(true){
@@ -203,8 +203,14 @@ public class InputValidator {
                     break;
                 }
             }
-            if(isValid)
-                return Arrays.asList(columnValues);
+            if(isValid){
+                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                for(int i=0; i<columnInfo.size(); i++){
+                    newColumnInfo.put(columnValues[i], (String) columnInfo.values().toArray()[i]);
+                }
+                return newColumnInfo;
+            }
+                
         }
     }
 

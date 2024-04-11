@@ -39,17 +39,75 @@ public class QueryEvaluationEngine {
             System.out.println("##해당 파일의 헤더 레코드를 읽어오는데 실패함");
             return;
         }
-        else{
-            headerRecordValue = _bufferManager.GetHeaderRecordValue(firstBlock);
+        int recordLength = GetRecordLength(tableName);
+        if(recordLength== -1) {
+            System.out.println("##해당 테이블의 레코드 길이를 구하는데 실패함");
+            return;
         }
+        headerRecordValue = _bufferManager.GetFreeRecordValue(firstBlock,0,recordLength);
+        
         
         //헤더 레코드에 담겨있는 값으로, 실제 레코드를 저장할 위치를 계산
+        int blockingFactor = _bufferManager.BLOCK_SIZE / recordLength;
+        int blockIndex = headerRecordValue / blockingFactor; //파일에서 저장될 block의 index(0부터 시작)
+        int recordIndex = headerRecordValue % blockingFactor; //block내에서 저장될 record의 index(0부터 시작)
         
         
-        //레코드를 저장할 위치에 레코드를 저장
+        //헤더레코드가 포인팅하던 free record가 file 범위를 벗어난다면
+        //헤더가 포인팅 하는 곳이 free-record-list의 유일한 노드임 (즉, 중간에 빈 레코드가 없음)
+        //따라서 새로운 block을 '생성'하고 -> 생성한 block에 레코드를 삽입 -> block을 파일에 write -> 헤더 레코드에 새로운 값(기존 값+1)을 저장
+        if(_bufferManager.BLOCK_SIZE * blockIndex >= GetFileSize(tableName)) {
+            byte[] newBlock = _bufferManager.CreateBlock();
+            if(!_bufferManager.WriteRecordToBlock(newBlock, recordLength, newColumnValues, recordIndex)){
+                System.out.println("##레코드를 쓰는데 실패함");
+                return;
+            }
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), newBlock, blockIndex);
+            
+            //헤더 레코드에 새로운 값(기존 값+1)을 저장
+            byte[] _firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
+            _bufferManager.SetFreeRecordValue(_firstBlock, 0, headerRecordValue + 1, recordLength);
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), _firstBlock, 0);
+        }
+
+        //헤더레코드가 포인팅하던 free record가 지닌 값이 '0' 이라면
+        //헤더가 포인팅 하는 곳이 free-record-list의 유일한 노드임 (즉, 중간에 빈 레코드가 없음)
+        //따라서 해당 block을 '읽고' -> block에 레코드를 삽입 -> block을 파일에 write -> 헤더 레코드에 새로운 값(기존 값+1)을 저장
+        else if (_bufferManager.GetFreeRecordValue(_bufferManager.ReadBlockFromFile(tableName, blockIndex), recordIndex, recordLength) == 0) {
+            byte[] block = _bufferManager.ReadBlockFromFile(tableName, blockIndex);
+            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValues, recordIndex)){
+                System.out.println("##레코드를 쓰는데 실패함");
+                return;
+            }
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), block, blockIndex);
+
+            //헤더 레코드에 새로운 값(기존 값+1)을 저장
+            byte[] _firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
+            _bufferManager.SetFreeRecordValue(_firstBlock, 0, headerRecordValue + 1, recordLength);
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), _firstBlock, 0);
+        }
+
+
+        //헤더레코드가 포인팅하던 free record가 file범위를 벗어나지 않고 지닌 값이 '0'이 아니라면
+        //테이블 중간중간 빈 공간이 있는 상태라는 것
+        //따라서 해당 block을 '읽고' -> block에 레코드를 삽입 -> block을 파일에 write -> 헤더 레코드에 새로운 값(해당 free record에 들어있던 값)을 저장
+        else {
+            byte[] block = _bufferManager.ReadBlockFromFile(tableName, blockIndex);
+            int existingFreeRecordValue = _bufferManager.GetFreeRecordValue(block, recordIndex, recordLength);
+            if(!_bufferManager.WriteRecordToBlock(block, recordLength, newColumnValues, recordIndex)){
+                System.out.println("##레코드를 쓰는데 실패함");
+                return;
+            }
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), block, blockIndex);
+
+            //헤더 레코드에 새로운 값(해당 free record에 들어있던 값)을 저장
+            byte[] _firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
+            _bufferManager.SetFreeRecordValue(_firstBlock, 0, existingFreeRecordValue, recordLength);
+            _bufferManager.WriteBlockToFile(new File(FILE_PATH + tableName), _firstBlock, 0);
+        }
+
+        System.out.println("\n@@@레코드 삽입 성공@@@");
         
-        
-        //헤더 레코드에 저장된 값을 업데이트
     }
 
     public void DeleteTuple() {
@@ -179,6 +237,32 @@ public class QueryEvaluationEngine {
             }
             return columnInfo;
         }
+    }
+    
+    /**
+     * 테이블의 레코드 길이를 가져오는 메소드
+     * @param tableName 테이블명
+     * @return 레코드 길이. 메타데이터가 없어서 구할 수 없으면 -1 반환
+     */
+    public int GetRecordLength(String tableName) {
+        LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName);
+        
+        if(columnInfo.isEmpty()) {
+            return -1;
+        }
+        
+        int recordLength = columnInfo.values().stream().mapToInt(Integer::parseInt).sum();
+        return recordLength;
+    }
+    
+    /**
+     * 파일의 크기를 가져오는 메소드
+     * @param tableName 테이블명
+     * @return 파일의 크기(bytes)
+     */
+    public long GetFileSize(String tableName) {
+        File file = new File(FILE_PATH + tableName);
+        return (long)file.length();
     }
         
 }

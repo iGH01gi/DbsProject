@@ -113,7 +113,36 @@ public class QueryEvaluationEngine {
     public void DeleteTuple() {
     }
 
-    public void SearchTable() {
+    public void SearchTable(String tableName) {
+        System.out.println("\n [ " + tableName + " 테이블의 전체 튜플 검색 ]");
+        
+        LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName);
+        int columnNum = columnInfo.size();
+        int recordLength = GetRecordLength(tableName);
+        int blockingFactor = _bufferManager.BLOCK_SIZE / recordLength;
+        
+        if(columnInfo.isEmpty()) {
+            System.out.println("##해당 테이블의 컬럼 메타데이터가 없음");
+            return;
+        }
+        
+        //컬럼명 순서대로 출력
+        for (Map.Entry<String, String> entry : columnInfo.entrySet()) {
+            System.out.print(entry.getKey() + "  |  ");
+        }
+        
+        //파일에서 block을 읽어오고, block내의 모든 레코드를 출력
+        // 파일의 block의 총 갯수
+        int blockSum = (int)GetFileSize(tableName) / _bufferManager.BLOCK_SIZE;
+        
+        // 파일의 block의 총 갯수만큼 반복
+        for(int i=0; i<blockSum; i++){
+            byte[] block = _bufferManager.ReadBlockFromFile(tableName, i);
+            for(int j=0; j<blockingFactor; j++){
+               //TODO : free record인지 아닌지 확인하는 로직 필요
+            }
+        }
+        
     }
 
     public void SearchTupleWithPk() {

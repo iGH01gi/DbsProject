@@ -51,7 +51,11 @@ public class TextQuery {
                     _queryEvaluationEngine.DeleteTuple();
                     break;
                 case 4:
-                    _queryEvaluationEngine.SearchTable();
+                    String tableName = Process4_1();
+                    if(tableName == null){ 
+                        break; //테이블이 아무것도 존재하지 않을 경우
+                    }
+                    _queryEvaluationEngine.SearchTable(tableName);
                     break;
                 case 5:
                     _queryEvaluationEngine.SearchTupleWithPk();
@@ -130,6 +134,30 @@ public class TextQuery {
         
         return newColumnValues;
     }
+    //endregion
+    
+    //region '4. 테이블 검색' 관련 print 및 input처리 함수
+    
+    private String Process4_1(){
+        while(true) {
+            //현재 존재하는 테이블명들을 출력하고 true리턴. 없을시 false 리턴
+            if (_queryEvaluationEngine.PrintAllTableNames() == false){
+                return null;
+            }
+            
+            //검색할 테이블명을 입력받음
+            String tableName = _inputValidator.Get4_1Input();
+            
+            //테이블이 존재하는지 확인
+            if (_queryEvaluationEngine.IsTableExist(tableName)) {
+                return tableName;
+            }
+            else {
+                System.out.println("올바른 테이블명을 다시 입력!!\n");
+            }
+        }
+    }
+    
     //endregion
     
 }

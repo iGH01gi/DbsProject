@@ -219,4 +219,21 @@ public class InputValidator {
 
     //endregion
    
+    //region '4. 테이블 검색' 관련 입력을 받는 함수들
+    public String Get4_1Input() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+
+        while (true) {
+            System.out.print("검색할 테이블명을 입력: ");
+            input = scanner.nextLine();
+
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                return input;
+            }
+        }
+    }
+    //endregion
 }

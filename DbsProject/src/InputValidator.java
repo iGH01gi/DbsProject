@@ -76,7 +76,11 @@ public class InputValidator {
                     if(columns.size() <= 0) {
                         System.out.println("컬럼을 하나 이상 입력해야 함");
                         continue;
-                    } else {
+                    }else if(sumBytes<5){
+                        System.out.println("전체 레코드의 크기는 5bytes 이상이어야 함.");
+                        continue;
+                    } 
+                    else {
                         return columns;
                     }
                 } else {

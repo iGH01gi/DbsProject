@@ -224,6 +224,70 @@ public class InputValidator {
     }
 
     //endregion
+    
+    //region '3. 튜플 삭제' 관련 입력을 받는 함수들
+    
+    public String Get3_1Input() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+        
+        while (true) {
+            System.out.print("튜플을 삭제 할 테이블명을 입력(30글자 이내): ");
+            input = scanner.nextLine();
+            
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                return input;
+            }
+        }
+    }
+    
+    /**
+     * 튜플을 삭제할 컬럼의 값을 입력받는 함수
+     * @param PKcolumnInfo 컬럼 정보 (key:PK컬럼명, value:글자수 제한) (순서 보장됨)
+     * @return key: pk컬럼값 , value: 해당 pk컬럼이 레코드에서 차지하는 길이
+     */
+    public LinkedHashMap<String,String> Get3_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
+        Scanner scanner = new Scanner(System.in);
+
+        while(true){
+            System.out.println("\nPK컬럼 순서에 맞게 값을 ,로 구분하여 입력(영문,숫자,_ 만 입력 가능): ");
+            String input = scanner.nextLine();
+            if(!IsASCII(input)){
+                System.out.println("영문,숫자,_ 만 입력 가능함");
+                continue;
+            }
+
+            String[] columnValues = input.split(",");
+
+            if(columnValues.length != PKcolumnInfo.size()){
+                System.out.println("입력한 값의 개수가 PK컬럼의 개수와 다름");
+                continue;
+            }
+
+            boolean isValid = true;
+            for (int i = 0; i < PKcolumnInfo.size(); i++) {
+                //입력받은 값이 글자수 제한을 넘는지 확인
+                if (columnValues[i].length() > Integer.parseInt((String) PKcolumnInfo.values().toArray()[i])) {
+                    String columnName = (String) PKcolumnInfo.keySet().toArray()[i];
+                    System.out.println(columnName + " 컬럼의 길이 제한(" + PKcolumnInfo.get(columnName) + ")을 초과함");
+                    isValid = false;
+                    break;
+                }
+            }
+            if(isValid){
+                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                for(int i=0; i<PKcolumnInfo.size(); i++){
+                    newColumnInfo.put(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]);
+                }
+                return newColumnInfo;
+            }
+
+        }
+    }
+    
+    //endregion
    
     //region '4. 테이블 검색' 관련 입력을 받는 함수들
     public String Get4_1Input() {
@@ -241,5 +305,64 @@ public class InputValidator {
             }
         }
     }
+    //endregion
+    
+    //region '5. pk로 튜플 검색' 관련 입력을 받는 함수들
+
+    public String Get5_1Input() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+
+        while (true) {
+            System.out.print("PK값으로 검색할 테이블명 입력(30글자 이내): ");
+            input = scanner.nextLine();
+
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                return input;
+            }
+        }
+    }
+
+    public LinkedHashMap<String,String> Get5_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
+        Scanner scanner = new Scanner(System.in);
+
+        while(true){
+            System.out.println("\nPK컬럼 순서에 맞게 값을 ,로 구분하여 입력(영문,숫자,_ 만 입력 가능): ");
+            String input = scanner.nextLine();
+            if(!IsASCII(input)){
+                System.out.println("영문,숫자,_ 만 입력 가능함");
+                continue;
+            }
+
+            String[] columnValues = input.split(",");
+
+            if(columnValues.length != PKcolumnInfo.size()){
+                System.out.println("입력한 값의 개수가 PK컬럼의 개수와 다름");
+                continue;
+            }
+
+            boolean isValid = true;
+            for (int i = 0; i < PKcolumnInfo.size(); i++) {
+                //입력받은 값이 글자수 제한을 넘는지 확인
+                if (columnValues[i].length() > Integer.parseInt((String) PKcolumnInfo.values().toArray()[i])) {
+                    String columnName = (String) PKcolumnInfo.keySet().toArray()[i];
+                    System.out.println(columnName + " 컬럼의 길이 제한(" + PKcolumnInfo.get(columnName) + ")을 초과함");
+                    isValid = false;
+                    break;
+                }
+            }
+            if(isValid){
+                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                for(int i=0; i<PKcolumnInfo.size(); i++){
+                    newColumnInfo.put(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]);
+                }
+                return newColumnInfo;
+            }
+
+        }
+    }
+    
     //endregion
 }

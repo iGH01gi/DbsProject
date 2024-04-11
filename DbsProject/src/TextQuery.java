@@ -47,19 +47,38 @@ public class TextQuery {
                     _queryEvaluationEngine.InsertTuple(tableName, newColumnValueInfo);
                     break;
                 }
-                case 3:
-                    _queryEvaluationEngine.DeleteTuple();
-                    break;
-                case 4:
-                    String tableName = Process4_1();
+                case 3:{
+                    String tableName = Process3_1();
                     if(tableName == null){ 
+                        break; //테이블이 아무것도 존재하지 않을 경우
+                    }
+                    LinkedHashMap<String, String> pkInfoForDeletion= Process3_2(tableName);
+                    if(pkInfoForDeletion.isEmpty()){
+                        break; //컬럼 메타데이터가 없는 비정상적인 상황
+                    }
+                    _queryEvaluationEngine.DeleteTuple(tableName, pkInfoForDeletion);
+                    break;
+                }
+                case 4: {
+                    String tableName = Process4_1();
+                    if (tableName == null) {
                         break; //테이블이 아무것도 존재하지 않을 경우
                     }
                     _queryEvaluationEngine.SearchTable(tableName);
                     break;
-                case 5:
-                    _queryEvaluationEngine.SearchTupleWithPk();
+                }
+                case 5:{
+                    String tableName = Process5_1();
+                    if (tableName == null) {
+                        break; //테이블이 아무것도 존재하지 않을 경우
+                    }
+                    LinkedHashMap<String, String> pkInfoForSearch = Process5_2(tableName);
+                    if(pkInfoForSearch.isEmpty()){
+                        break; //컬럼 메타데이터가 없는 비정상적인 상황
+                    }
+                    _queryEvaluationEngine.SearchTupleWithPk(tableName, pkInfoForSearch);
                     break;
+                }
                 default:
                     System.out.println("잘못된 입력");
                     break;  
@@ -136,6 +155,54 @@ public class TextQuery {
     }
     //endregion
     
+    //region '3. 튜플 삭제' 관련 print 및 input처리 함수
+    
+    private String Process3_1(){
+        while(true) {
+            //현재 존재하는 테이블명들을 출력하고 true리턴. 없을시 false 리턴
+            if (_queryEvaluationEngine.PrintAllTableNames() == false){
+                return null;
+            }
+
+            //튜플을 삽입할 테이블명 입력받음
+            String tableName = _inputValidator.Get3_1Input();
+
+            //테이블이 존재하는지 확인
+            if (_queryEvaluationEngine.IsTableExist(tableName)) {
+                return tableName;
+            }
+            else {
+                System.out.println("올바른 테이블명을 다시 입력!!\n");
+            }
+        }
+    } 
+    
+    /**
+     * 튜플 삭제를 위한 입력을 받는 함수
+     * @param tableName 삭제하고자하는 튜플이 있는 테이블명
+     * @return 삭제할 튜플의 컬럼명과 값
+     */
+    private LinkedHashMap<String,String> Process3_2(String tableName){
+        //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
+        LinkedHashMap<String,String> columnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
+        if(!_queryEvaluationEngine.PrintPkColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
+            return new LinkedHashMap<>();
+        }
+        else{
+            columnInfo = _queryEvaluationEngine.GetPkColumnInfo(tableName);
+            if(columnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
+                return new LinkedHashMap<>();
+            }
+        }
+
+        //튜플 삭제할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
+        LinkedHashMap<String,String> pkInfoForDeletion = _inputValidator.Get3_2Input(columnInfo);
+
+        return pkInfoForDeletion;
+    }
+    
+    //endregion
+    
     //region '4. 테이블 검색' 관련 print 및 input처리 함수
     
     private String Process4_1(){
@@ -156,6 +223,48 @@ public class TextQuery {
                 System.out.println("올바른 테이블명을 다시 입력!!\n");
             }
         }
+    }
+    
+    //endregion
+    
+    //region '5. pk로 튜플 검색' 관련 print 및 input처리 함수
+    private String Process5_1(){
+        while(true) {
+            //현재 존재하는 테이블명들을 출력하고 true리턴. 없을시 false 리턴
+            if (_queryEvaluationEngine.PrintAllTableNames() == false){
+                return null;
+            }
+
+            //튜플을 삽입할 테이블명 입력받음
+            String tableName = _inputValidator.Get5_1Input();
+
+            //테이블이 존재하는지 확인
+            if (_queryEvaluationEngine.IsTableExist(tableName)) {
+                return tableName;
+            }
+            else {
+                System.out.println("올바른 테이블명을 다시 입력!!\n");
+            }
+        }
+    }
+    
+    private LinkedHashMap<String,String> Process5_2(String tableName){
+        //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
+        LinkedHashMap<String,String> pkColumnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
+        if(!_queryEvaluationEngine.PrintPkColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
+            return new LinkedHashMap<>();
+        }
+        else{
+            pkColumnInfo = _queryEvaluationEngine.GetPkColumnInfo(tableName);
+            if(pkColumnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
+                return new LinkedHashMap<>();
+            }
+        }
+
+        //튜플 검색할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
+        LinkedHashMap<String,String> pkInfoForSearch = _inputValidator.Get5_2Input(pkColumnInfo);
+
+        return pkInfoForSearch;
     }
     
     //endregion

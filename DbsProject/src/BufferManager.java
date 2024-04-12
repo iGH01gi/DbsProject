@@ -84,7 +84,7 @@ public class BufferManager {
         int position = 0;
         for (int i=0; i<newValues.size(); i++) {
             byte[] valueBytes = new byte[newLengths.get(i)];
-            System.arraycopy(newValues.get(i).getBytes(StandardCharsets.UTF_8), 0, valueBytes, 0, newValues.get(i).getBytes(StandardCharsets.UTF_8).length);
+            System.arraycopy(newValues.get(i).getBytes(StandardCharsets.US_ASCII), 0, valueBytes, 0, newValues.get(i).getBytes(StandardCharsets.US_ASCII).length);
             System.arraycopy(valueBytes, 0, record, position, valueBytes.length);
             position += newLengths.get(i);
         }

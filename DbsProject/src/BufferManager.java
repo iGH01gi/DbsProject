@@ -5,6 +5,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class BufferManager {
@@ -65,11 +66,11 @@ public class BufferManager {
      * 블록에 레코드를 쓰는 메소드
      * @param block 블록 바이트 배열
      * @param recordLength 레코드의 길이(bytes)
-     * @param newColumnValueInfo key: 컬럼값 , value: 해당 컬럼이 레코드에서 차지하는 길이
+     * @param newColumnValueInfo first: 컬럼값 , second: 해당 컬럼이 레코드에서 차지하는 길이
      * @param recordIndex 블록에서 해당 레코드가 몇번째 레코드가 될지(0부터 시작)
      * @return
      */
-    public boolean WriteRecordToBlock(byte[] block, int recordLength, LinkedHashMap<String,String> newColumnValueInfo, int recordIndex) {
+    public boolean WriteRecordToBlock(byte[] block, int recordLength, List<Pair<String,String>> newColumnValueInfo, int recordIndex) {
         //레코드 생성
         byte[] record = new byte[recordLength];
         int recordPosition = recordIndex * recordLength;
@@ -79,8 +80,8 @@ public class BufferManager {
         }
         
         //레코드에 값을 넣기
-        List<String> newValues = new ArrayList<>(newColumnValueInfo.keySet());
-        List<Integer> newLengths = new ArrayList<>(newColumnValueInfo.values()).stream().map(Integer::parseInt).toList();
+        List<String> newValues = newColumnValueInfo.stream().map(Pair::getFirst).collect(Collectors.toList());
+        List<Integer> newLengths = newColumnValueInfo.stream().map(pair -> Integer.parseInt(pair.getSecond())).collect(Collectors.toList());
         int position = 0;
         for (int i=0; i<newValues.size(); i++) {
             byte[] valueBytes = new byte[newLengths.get(i)];

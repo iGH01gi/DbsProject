@@ -39,7 +39,7 @@ public class TextQuery {
                     if(tableName == null){ 
                         break; //테이블이 아무것도 존재하지 않을 경우
                     }
-                    LinkedHashMap<String, String> newColumnValueInfo = Process2_2(tableName);
+                    List<Pair<String,String>> newColumnValueInfo = Process2_2(tableName);
                     if(newColumnValueInfo.isEmpty()) {
                         break; //컬럼 메타데이터가 없는 비정상적인 상황
                     }
@@ -52,7 +52,7 @@ public class TextQuery {
                     if(tableName == null){ 
                         break; //테이블이 아무것도 존재하지 않을 경우
                     }
-                    LinkedHashMap<String, String> pkInfoForDeletion= Process3_2(tableName);
+                    List<Pair<String,String>> pkInfoForDeletion= Process3_2(tableName);
                     if(pkInfoForDeletion.isEmpty()){
                         break; //컬럼 메타데이터가 없는 비정상적인 상황
                     }
@@ -72,7 +72,7 @@ public class TextQuery {
                     if (tableName == null) {
                         break; //테이블이 아무것도 존재하지 않을 경우
                     }
-                    LinkedHashMap<String, String> pkInfoForSearch = Process5_2(tableName);
+                    List<Pair<String,String>> pkInfoForSearch = Process5_2(tableName);
                     if(pkInfoForSearch.isEmpty()){
                         break; //컬럼 메타데이터가 없는 비정상적인 상황
                     }
@@ -135,21 +135,21 @@ public class TextQuery {
         }
     }
     
-    private LinkedHashMap<String,String> Process2_2(String tableName){
+    private List<Pair<String,String>> Process2_2(String tableName){
         //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
         LinkedHashMap<String,String> columnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
         if(!_queryEvaluationEngine.PrintColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
-            return new LinkedHashMap<>();
+            return new ArrayList<>();
         }
         else{
             columnInfo = _queryEvaluationEngine.GetColumnInfo(tableName);
             if(columnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
-                return new LinkedHashMap<>();
+                return new ArrayList<>();
             }
         }
         
         //튜플 삽입할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
-        LinkedHashMap<String,String> newColumnValues = _inputValidator.Get2_2Input(columnInfo);
+        List<Pair<String,String>> newColumnValues = _inputValidator.Get2_2Input(columnInfo);
         
         return newColumnValues;
     }
@@ -182,21 +182,21 @@ public class TextQuery {
      * @param tableName 삭제하고자하는 튜플이 있는 테이블명
      * @return 삭제할 튜플의 컬럼명과 값
      */
-    private LinkedHashMap<String,String> Process3_2(String tableName){
+    private List<Pair<String,String>> Process3_2(String tableName){
         //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
         LinkedHashMap<String,String> columnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
         if(!_queryEvaluationEngine.PrintPkColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
-            return new LinkedHashMap<>();
+            return new ArrayList<>();
         }
         else{
             columnInfo = _queryEvaluationEngine.GetPkColumnInfo(tableName);
             if(columnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
-                return new LinkedHashMap<>();
+                return new ArrayList<>();
             }
         }
 
         //튜플 삭제할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
-        LinkedHashMap<String,String> pkInfoForDeletion = _inputValidator.Get3_2Input(columnInfo);
+        List<Pair<String,String>> pkInfoForDeletion = _inputValidator.Get3_2Input(columnInfo);
 
         return pkInfoForDeletion;
     }
@@ -248,21 +248,21 @@ public class TextQuery {
         }
     }
     
-    private LinkedHashMap<String,String> Process5_2(String tableName){
+    private List<Pair<String,String>> Process5_2(String tableName){
         //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력 및 저장
         LinkedHashMap<String,String> pkColumnInfo = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
         if(!_queryEvaluationEngine.PrintPkColumnNames(tableName)){ //컬럼 메타데이터가 없는 비정상적인 상황
-            return new LinkedHashMap<>();
+            return new ArrayList<>();
         }
         else{
             pkColumnInfo = _queryEvaluationEngine.GetPkColumnInfo(tableName);
             if(pkColumnInfo.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
-                return new LinkedHashMap<>();
+                return new ArrayList<>();
             }
         }
 
         //튜플 검색할 값들 ,로 구분해서 입력받음 (글자수 제한 지키도록 제한하고 있음)
-        LinkedHashMap<String,String> pkInfoForSearch = _inputValidator.Get5_2Input(pkColumnInfo);
+        List<Pair<String,String>> pkInfoForSearch = _inputValidator.Get5_2Input(pkColumnInfo);
 
         return pkInfoForSearch;
     }

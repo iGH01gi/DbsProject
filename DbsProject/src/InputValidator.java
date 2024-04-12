@@ -179,7 +179,7 @@ public class InputValidator {
      * @param columnInfo 컬럼 정보 (key:컬럼명, value:글자수 제한) (순서 보장됨)
      * @return key: 컬럼값 , value: 해당 컬럼이 레코드에서 차지하는 길이
      */
-    public LinkedHashMap<String,String> Get2_2Input(LinkedHashMap<String,String> columnInfo) {
+    public List<Pair<String,String>> Get2_2Input(LinkedHashMap<String,String> columnInfo) {
         Scanner scanner = new Scanner(System.in);
         
         while(true){
@@ -208,9 +208,9 @@ public class InputValidator {
                 }
             }
             if(isValid){
-                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                List<Pair<String,String>> newColumnInfo = new ArrayList<>();
                 for(int i=0; i<columnInfo.size(); i++){
-                    newColumnInfo.put(columnValues[i], (String) columnInfo.values().toArray()[i]);
+                    newColumnInfo.add(new Pair<String,String>(columnValues[i], (String) columnInfo.values().toArray()[i]));
                 }
                 return newColumnInfo;
             }
@@ -250,9 +250,9 @@ public class InputValidator {
     /**
      * 튜플을 삭제할 컬럼의 값을 입력받는 함수
      * @param PKcolumnInfo 컬럼 정보 (key:PK컬럼명, value:글자수 제한) (순서 보장됨)
-     * @return key: pk컬럼값 , value: 해당 pk컬럼이 레코드에서 차지하는 길이
+     * @return 리스트(first: pk컬럼값 , second: 해당 pk컬럼이 레코드에서 차지하는 길이)
      */
-    public LinkedHashMap<String,String> Get3_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
+    public List<Pair<String,String>> Get3_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
         Scanner scanner = new Scanner(System.in);
 
         while(true){
@@ -281,9 +281,9 @@ public class InputValidator {
                 }
             }
             if(isValid){
-                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                List<Pair<String,String>> newColumnInfo = new ArrayList<>();
                 for(int i=0; i<PKcolumnInfo.size(); i++){
-                    newColumnInfo.put(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]);
+                    newColumnInfo.add(new Pair<String,String>(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]));
                 }
                 return newColumnInfo;
             }
@@ -329,7 +329,7 @@ public class InputValidator {
         }
     }
 
-    public LinkedHashMap<String,String> Get5_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
+    public List<Pair<String,String>> Get5_2Input(LinkedHashMap<String,String> PKcolumnInfo) {
         Scanner scanner = new Scanner(System.in);
 
         while(true){
@@ -358,9 +358,9 @@ public class InputValidator {
                 }
             }
             if(isValid){
-                LinkedHashMap<String,String> newColumnInfo = new LinkedHashMap<>();
+                List<Pair<String,String>> newColumnInfo = new ArrayList<>();
                 for(int i=0; i<PKcolumnInfo.size(); i++){
-                    newColumnInfo.put(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]);
+                    newColumnInfo.add(new Pair<String,String>(columnValues[i], (String) PKcolumnInfo.values().toArray()[i]));
                 }
                 return newColumnInfo;
             }

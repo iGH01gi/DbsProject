@@ -29,7 +29,7 @@ public class QueryEvaluationEngine {
         _bufferManager.CreateFile(tableName, columns);
     }
 
-    public void InsertTuple(String tableName, LinkedHashMap<String,String> newColumnValueInfo) {
+    public void InsertTuple(String tableName, List<Pair<String,String>> newColumnValueInfo) {
         //헤더 레코드에 담겨있는 값을 읽어옴
         int headerRecordValue = -1;
         byte[] firstBlock = _bufferManager.ReadBlockFromFile(tableName, 0);
@@ -111,21 +111,21 @@ public class QueryEvaluationEngine {
     /**
      * 튜플 삭제
      * @param tableName 테이블명
-     * @param pkInfoForDeletion PK 컬럼정보(key:pk값, value:글자수제한)
+     * @param pkInfoForDeletion PK 컬럼정보 리스트(first:pk값, second:글자수제한)
      */
-    public void DeleteTuple(String tableName, LinkedHashMap<String, String> pkInfoForDeletion) {
+    public void DeleteTuple(String tableName, List<Pair<String,String>> pkInfoForDeletion) {
         
         //Key: 검색된 레코드가 위치한 Block 인덱스. Value: 해당 Block에서 검색된 레코드의 인덱스
         //검색된 레코드가 없으면 null
-        LinkedHashMap<Integer,Integer> recordInfo = SearchTupleWithPkNoPrint(tableName, pkInfoForDeletion);
+        Pair<Integer,Integer> recordInfo = SearchTupleWithPkNoPrint(tableName, pkInfoForDeletion);
         
-        if(recordInfo==null || recordInfo.isEmpty()) {
+        if(recordInfo==null) {
             System.out.println("##삭제하고자 하는 레코드가 없음");
             return;
         }
         
-        int blockIndex = recordInfo.keySet().toArray(new Integer[1])[0];
-        int recordIndex = recordInfo.values().toArray(new Integer[1])[0];
+        int blockIndex = recordInfo.first;
+        int recordIndex = recordInfo.second;
         int blockingFactor = _bufferManager.BLOCK_SIZE / GetRecordLength(tableName);
         
         //기존 헤드 레코드값을 기록해 둠 
@@ -187,9 +187,9 @@ public class QueryEvaluationEngine {
     /**
      * 특정 테이블의 튜플 한 개 검색
      * @param tableName 테이블명
-     * @param pkInfoForSearch PK 컬럼정보(key:pk값, value:글자수제한)
+     * @param pkInfoForSearch PK 컬럼정보 리스트(first:pk값, second:글자수제한)
      */
-    public void SearchTupleWithPk(String tableName, LinkedHashMap<String, String> pkInfoForSearch) {
+    public void SearchTupleWithPk(String tableName, List<Pair<String,String>> pkInfoForSearch) {
         LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName);
         int recordLength = GetRecordLength(tableName);
         int blockingFactor = _bufferManager.BLOCK_SIZE / recordLength;
@@ -230,11 +230,11 @@ public class QueryEvaluationEngine {
     /**
      * 특정 테이블의 튜플 한 개 검색하고 block과 record의 인덱스를 반환
      * @param tableName 테이블명
-     * @param pkInfoForSearch PK 컬럼정보(key:pk값, value:글자수제한)
-     * @return Key: 검색된 레코드가 위치한 Block 인덱스. Value: 해당 Block에서 검색된 레코드의 인덱스<br>
+     * @param pkInfoForSearch PK 컬럼정보 리스트(first:pk값, second:글자수제한)
+     * @return first: 검색된 레코드가 위치한 Block 인덱스. second: 해당 Block에서 검색된 레코드의 인덱스<br>
      * 검색된 레코드가 없으면 null 반환
      */
-    public LinkedHashMap<Integer,Integer> SearchTupleWithPkNoPrint(String tableName, LinkedHashMap<String, String> pkInfoForSearch) {
+    public Pair<Integer,Integer> SearchTupleWithPkNoPrint(String tableName, List<Pair<String,String>> pkInfoForSearch) {
         LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName);
         int recordLength = GetRecordLength(tableName);
         int blockingFactor = _bufferManager.BLOCK_SIZE / recordLength;
@@ -254,8 +254,7 @@ public class QueryEvaluationEngine {
                 if(record != null && !_bufferManager.IsFreeRecord(record)){
                     if(isRecordMatchingPkValue(record, tableName, pkInfoForSearch)){
                         //해당하는 레코드 발견!  
-                        LinkedHashMap<Integer,Integer> recordInfo = new LinkedHashMap<>();
-                        recordInfo.put(i, j);
+                        Pair<Integer,Integer> recordInfo = new Pair<>(i,j);
                         return recordInfo;
                     }
                 }
@@ -487,10 +486,10 @@ public class QueryEvaluationEngine {
      * 레코드가 PK값과 일치하는지 확인하는 메소드
      * @param record 레코드 바이트 배열
      * @param tableName 테이블명
-     * @param pkInfoForSearch 검색하려는 PK값 정보(key:pk값, value:글자수제한)
+     * @param pkInfoForSearch 검색하려는 PK값 정보 리스트(first:pk값, second:글자수제한)
      * @return PK값이 일치하면 true, 일치하지 않으면 false
      */
-    public boolean isRecordMatchingPkValue(byte[] record, String tableName, LinkedHashMap<String, String> pkInfoForSearch) {
+    public boolean isRecordMatchingPkValue(byte[] record, String tableName, List<Pair<String,String>> pkInfoForSearch) {
         LinkedHashMap<String, String> columnInfo = GetColumnInfo(tableName); //컬럼정보(key:컬럼명, value:글자수 제한)
         LinkedHashMap<String, String> pkColumnInfo = GetPkColumnInfo(tableName); //PK컬럼정보(key:컬럼명, value:글자수 제한)
 
@@ -508,7 +507,7 @@ public class QueryEvaluationEngine {
                 //record바이트배열에서 start부터 currColLen만큼의 바이트를 가져와서 pkInfoForSearch의 count번째 key값과 비교
                 byte[] columnBytes = Arrays.copyOfRange(record, start, start + currColLen);
                 String pkValue = new String(columnBytes, StandardCharsets.UTF_8).trim();
-                String serchingPkValue = (String) pkInfoForSearch.keySet().toArray()[count];
+                String serchingPkValue = (String) pkInfoForSearch.get(count).getFirst();
                 
                 if(!pkValue.equals(serchingPkValue)) {
                     return false;

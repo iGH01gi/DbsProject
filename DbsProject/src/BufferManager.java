@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 public class BufferManager {
     public static final int BLOCK_SIZE = 140; //블록 크기(140 bytes)
     private static final String FILE_PATH = "files/"; //파일들이 저장될 경로
+    private static final String TEMP_FILE_PATH = "tempFiles/"; //임시 파일들이 저장될 경로
 
     public void CreateFile(String tableName, Map<String, Integer> columns) {
         File file = new File(FILE_PATH + tableName);
@@ -209,6 +210,47 @@ public class BufferManager {
         
         return null;
     }
+
+    /**
+     * 임시 파일(파티션)로부터 블록을 읽어오는 메소드
+     * @param tempFileName 임시파일 이름 (xxx-part#형식)
+     * @param blockIndex 파일에서 몇번째 블록을 읽어올지(0부터 시작)
+     * @return 읽어온 블록의 바이트 배열
+     */
+    public byte[] ReadBlockFromTempFile(String tempFileName, int blockIndex) {
+        try {
+            File file = new File(TEMP_FILE_PATH + tempFileName);
+            RandomAccessFile raf = new RandomAccessFile(file, "r");
+            byte[] block = new byte[BLOCK_SIZE];
+            raf.seek(block.length * blockIndex);
+            int readBytes= raf.read(block);
+            raf.close();
+
+            if(readBytes == -1){
+                System.out.println("파일의 마지막에서부터 블록을 읽으려고 시도했음!");
+            }
+            else if(readBytes != BLOCK_SIZE){
+                System.out.println("블록이 전부 읽히지 않았음. 읽은 바이트 수: " + readBytes);
+                System.out.println("블록 계산식 점검 필요");
+            }
+            else {
+                return block;
+            }
+
+        } catch (IOException e) {
+            if(e instanceof EOFException){
+                System.out.println("파일의 범위를 넘어서는 곳부터 읽으려고 시도했습니다.");
+            }
+            else {
+                System.out.println("File에서 block을 읽는데 실패했습니다.");
+            }
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+    
+    
     
     /**
      * 해당 레코드 바이트배열이 freeRecord인지 확인하는 메소드
@@ -235,5 +277,26 @@ public class BufferManager {
         } catch (IOException e) {
             System.out.println("An error occurred while writing to the file: " + e.getMessage());
         }
+    }
+
+    /**
+     * 특정 디렉토리에서 특정 prefix를 가진 파일들의 이름목록을 가져오는 메소드
+     * @param directoryPath 파일이 위치한 디렉토리 경로
+     * @param prefix 파일 prefix(ex. Monster-part)
+     */
+    public List<String> GetFilesWithPrefix(String directoryPath, String prefix) {
+        File directory = new File(directoryPath);
+        File[] files = directory.listFiles();
+        List<String> matchingFiles = new ArrayList<>();
+
+        if (files != null) {
+            for (File file : files) {
+                if (file.getName().startsWith(prefix)) {
+                    matchingFiles.add(file.getName());
+                }
+            }
+        }
+
+        return matchingFiles;
     }
 }

@@ -565,14 +565,82 @@ public class QueryEvaluationEngine {
         String columnName1 = tableColumnNamePairs.get(0).getSecond();
         String tableName2 = tableColumnNamePairs.get(1).getFirst();
         String columnName2 = tableColumnNamePairs.get(1).getSecond();
+
+        int recordLength1 = GetRecordLength(tableName1);
+        int blockingFactor1 = _bufferManager.BLOCK_SIZE / recordLength1;
+        
+        int recordLength2 = GetRecordLength(tableName2);
+        int blockingFactor2 = _bufferManager.BLOCK_SIZE / recordLength2;
         
         //파티션 과정 (임시 파일 tempFiles폴더 산하에 '테이블명-part#' 형식으로 생성)
         Partitioning(tableName1, columnName1);
         Partitioning(tableName2, columnName2);
         
         
+        
         //파티션된 임시 파일들을 읽어서 비교하는 과정
-        //buil input을 선정하여서 그것에 대한 in-memory hash index를 생성 (HashMap 사용)
+        //build input으로 사용할 파일들의 이름을 가져옴
+        List<String> buildInputNames = _bufferManager.GetFilesWithPrefix(TEMP_FILE_PATH, tableName1+"-part");
+        //probe input으로 사용할 파일들의 이름을 가져옴
+        List<String> probeInputNames = _bufferManager.GetFilesWithPrefix(TEMP_FILE_PATH, tableName2+"-part");
+
+        //probeInputNames에서 -part 뒤에 있는 숫자목록을 가져옴 
+        List<Integer> probeInputNums = new ArrayList<>();
+        for(String probeInputName : probeInputNames){
+            int probeInputNum = Integer.parseInt(probeInputName.substring(probeInputName.lastIndexOf("-part")+1));
+            probeInputNums.add(probeInputNum);
+        }
+        
+        for(String buildInputName : buildInputNames){
+            //buildInputName에서 -part 뒤에 있는 숫자를 가져옴
+            int buildInputNum = Integer.parseInt(buildInputName.substring(buildInputName.lastIndexOf("-part")+1));
+            
+            //현재 buildInput의 파티션과 대응되는 probeInput의 파티션이 없다면 패스
+            if(!probeInputNums.contains(buildInputNum)){
+                continue;
+            }
+            
+            //HashMap을 사용해서 인메모리 hash index를 구현함(key: join컬럼값, value: 해당 레코드 바이트배열)
+            Map<String,byte[]> hashIndex = new HashMap<>();
+            
+            int buildInputBlockNum = (int)GetFileSize(buildInputName) / _bufferManager.BLOCK_SIZE; //buildInputName의 block의 갯수를 구함
+
+            
+            
+            //build input의 모든 블록들을 루프를 돌면서 hash index를 만드는 과정
+            for(int i=0; i<buildInputBlockNum; i++) {
+                byte[] buildInputBlock = _bufferManager.ReadBlockFromTempFile(buildInputName, i);
+                
+                for(int j=0; j<blockingFactor1; j++) {
+                    byte[] record = _bufferManager.ReadRecordFromBlock(buildInputBlock, GetRecordLength(buildInputName), j);
+                    
+                    if(record != null && !_bufferManager.IsFreeRecord(record)){
+                        //record바이트배열에서 join 컬럼값을 가져와서 해시함수에 넣음 (key: join컬럼값, value: 해당 레코드 바이트배열)
+                        LinkedHashMap<String,String> columnInfo = GetColumnInfo(buildInputName);
+                        
+                        //TODO: record바이트배열에서 join컬럼값을 가져와서 해시함수에 넣는 로직
+                        
+                    }
+                }
+            }
+             
+            //probe input의 모든 블록들을 루프를 돌면서 hash index를 이용해서 조인하는 과정
+            int probeInputBlockNum = (int)GetFileSize(tableName2+"-part"+buildInputNum) / _bufferManager.BLOCK_SIZE; //probeInputName의 block의 갯수를 구함
+            
+            for(int i=0; i<probeInputBlockNum; i++) {
+                byte[] probeInputBlock = _bufferManager.ReadBlockFromTempFile(tableName2 + "-part" + buildInputNum, i);
+
+                for (int j = 0; j < blockingFactor2; j++) {
+                    byte[] record = _bufferManager.ReadRecordFromBlock(probeInputBlock, GetRecordLength(tableName2 + "-part" + buildInputNum), j);
+
+                    if (record != null && !_bufferManager.IsFreeRecord(record)) {
+                        
+                    }
+                }
+            }
+        }
+        
+        //build input과 대응되는건 probe input
         
     }
 

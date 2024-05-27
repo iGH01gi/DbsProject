@@ -10,8 +10,11 @@ public class QueryEvaluationEngine {
     private BufferManager _bufferManager; // 고정길이 레코드 파일 Block I/O를 수행하는 인스턴스
     public MetaDataManager _metaDataManager; // MySQL에 저장된 메타데이터를 다루는 인스턴스
     private static final String FILE_PATH = "files/"; //파일들이 저장될 경로
+    private static final String TEMP_FILE_PATH = "tempFiles/"; //임시 파일들이 저장될 경로
     private static final String _relationMetaTable = "relation_metadata"; //테이블 메타데이터를 저장하는 테이블 이름
     private static final String _attributeMetaTable = "attribute_metadata"; //컬럼 메타데이터를 저장하는 테이블 이름
+    
+    private static final int _partitionNum = 3; //파티션 수
     
     public QueryEvaluationEngine() {
         _bufferManager = new BufferManager();
@@ -337,6 +340,32 @@ public class QueryEvaluationEngine {
     }
     
     /**
+     * 실제파일+메타데이터가 존재하는 테이블의 갯수를 가져오는 메소드
+     * @return 테이블의 갯수
+     */
+    public int GetTableNum() {
+        int count=0;
+        
+        List<LinkedHashMap<String,String>> rl = _metaDataManager.SearchTable(_relationMetaTable, null, null);
+        if(rl.isEmpty()){
+            return 0;
+        } else {
+            for (int i = 0; i < rl.size(); i++) {
+                //메타데이터 검색 결과리스트에서, 현재 row의 relation_name을 가져옴
+                String tableName = rl.get(i).get("relation_name");
+
+                //실제 파일이 존재해야지만 출력가능
+                File file = new File(FILE_PATH + tableName);
+                if (file.exists()) {
+                    count++;
+                }
+            }
+        }
+        
+        return count;
+    }
+    
+    /**
      * 테이블의 컬럼명을 출력 (글자제한도 포함해서)
      * @param tableName 테이블명
      * @return 컬럼메타데이터가 있어서 정상출력이면 true, 없으면 false
@@ -529,5 +558,124 @@ public class QueryEvaluationEngine {
         }
         
     }
+
+    public void HashEquiJoin(List<Pair<String, String>> tableColumnNamePairs) {
         
+        String tableName1 = tableColumnNamePairs.get(0).getFirst();
+        String columnName1 = tableColumnNamePairs.get(0).getSecond();
+        String tableName2 = tableColumnNamePairs.get(1).getFirst();
+        String columnName2 = tableColumnNamePairs.get(1).getSecond();
+        
+        //파티션 과정 (임시 파일 tempFiles폴더 산하에 '테이블명-part#' 형식으로 생성)
+        Partitioning(tableName1, columnName1);
+        Partitioning(tableName2, columnName2);
+        
+        
+        //파티션된 임시 파일들을 읽어서 비교하는 과정
+        //buil input을 선정하여서 그것에 대한 in-memory hash index를 생성 (HashMap 사용)
+        
+    }
+
+    /**
+     * hash함수를 적용하여서 파티션을 나누는어 임시파일을 생성하는 메소드
+     * @param tableName 파티셔닝할 테이블명
+     * @param columnName 해시함수에 사용할 컬럼명
+     */
+    private void Partitioning(String tableName, String columnName) {
+        //해당 테이블명으로 존재하던 임시파일을 모두 지움
+        DeleteTempFiles(tableName);
+        
+        int recordLength = GetRecordLength(tableName);
+        int blockingFactor = _bufferManager.BLOCK_SIZE / recordLength;
+        LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName); //key:컬럼명, value:글자수
+        int startIndex = 0;
+        int hashColumnLength = 0;
+        for (Map.Entry<String, String> entry : columnInfo.entrySet()) {
+            if (entry.getKey().equals(columnName)) {
+                hashColumnLength = Integer.parseInt(entry.getValue());
+                break;
+            }
+            startIndex += Integer.parseInt(entry.getValue());
+        }
+        
+        //140바이트짜리 바이트배열(버켓) 3개 리스트. 각각의 버켓에 파티션된 레코드들을 저장
+        List<Pair<byte[],Integer>> buckets = new ArrayList<>(); //pair의 key: 바이트배열, value: 현재 몇 바이트 저장되었는지
+        for(int i=0; i<_partitionNum; i++){
+            Pair<byte[],Integer> bucket = new Pair<>(new byte[_bufferManager.BLOCK_SIZE], 0);
+            buckets.add(bucket);
+        }
+        
+
+        //파일의 block의 총 갯수
+        int blockSum = (int)GetFileSize(tableName) / _bufferManager.BLOCK_SIZE;
+        
+        // 파일의 block의 총 갯수만큼 반복하여서 파티션을 나눔 (임시파일 tempFiles폴더 산하에 '테이블명-part#' 형식으로 생성)
+        for(int i=0; i<blockSum; i++){
+            byte[] block = _bufferManager.ReadBlockFromFile(tableName, i); //파일에서 block을 읽어옴
+            for(int j=0; j<blockingFactor; j++){
+                byte[] record = _bufferManager.ReadRecordFromBlock(block, recordLength, j); //block에서 레코드를 읽어옴
+                if(record != null && !_bufferManager.IsFreeRecord(record)){
+                    //TODO: 레코드의 컬럼값을 해시함수에 넣어서 파티션을 나누는 로직
+                    //record바이트배열에서 startIndex부터 hashColumnLength만큼의 바이트를 가져와서 해시함수에 넣음
+                    byte[] hashColumnBytes = Arrays.copyOfRange(record, startIndex, startIndex + hashColumnLength);
+                    int bucketNum = Math.abs(Arrays.hashCode(hashColumnBytes)) % _partitionNum;
+                    
+                    //record 바이트 배열을 bucketNum에 해당하는 bucket에다가 저장
+                    Pair<byte[],Integer> bucket = buckets.get(bucketNum); //pair의 key: 바이트배열, value: 현재 몇 바이트 저장되었는지
+                    //record 바이트배열을 bucket에다가 넣으면 넘치게될때, bucket의 내용을 임시파일에다가 이어붙이고 bucket을 비움
+                    if(bucket.getSecond()+recordLength > _bufferManager.BLOCK_SIZE){
+                        byte[] bytesToAppend = bucket.getFirst();
+                        String filePath = TEMP_FILE_PATH+ tableName + "-part" + bucketNum;
+                        _bufferManager.AppendBytesToFile(bytesToAppend, filePath);
+                        
+                        bucket.first = new byte[_bufferManager.BLOCK_SIZE];
+                        bucket.second = 0;
+                    }
+                    
+                    int currentSavedBytesNum = bucket.getSecond();
+                    for (int k = 0; k < recordLength; k++) {
+                        bucket.getFirst()[currentSavedBytesNum + k] = record[k]; //bucket의 바이트배열에 currentSavedBytesNum부터 record바이트배열을 저장
+                    }
+                    bucket.second = currentSavedBytesNum + recordLength;
+                    
+                }
+            }
+            System.out.print(tableName+ "테이블의 " + i + "번째 블록 파티셔닝 완료\n");
+        }
+        
+        //마지막으로 남은 bucket의 내용을 bucket이 빈 바이트배열이 아닐때에만 임시파일에다가 저장
+        for(int i=0; i<_partitionNum; i++){
+            Pair<byte[],Integer> bucket = buckets.get(i);
+            if(bucket.getSecond() > 0){
+                byte[] bytesToAppend = bucket.getFirst();
+                String filePath = TEMP_FILE_PATH+ tableName + "-part" + i;
+                _bufferManager.AppendBytesToFile(bytesToAppend, filePath);
+            }
+        }
+        
+    }
+
+    /**
+     * tableName-part# 형식의 임시파일을 모두 삭제하는 메소드
+     * @param tableName
+     */
+    public void DeleteTempFiles(String tableName) {
+        String prefix = tableName + "-part";
+        File tempFilesDir = new File("tempFiles");
+
+        // Get all files in the directory
+        File[] files = tempFilesDir.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+                // If the file name starts with the prefix, delete it
+                if (file.getName().startsWith(prefix)) {
+                    boolean deleted = file.delete();
+                    if (!deleted) {
+                        System.out.println("Failed to delete file: " + file.getName());
+                    }
+                }
+            }
+        }
+    }
 }

@@ -1,7 +1,4 @@
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -224,6 +221,19 @@ public class BufferManager {
         }
         else {
             return false;
+        }
+    }
+    
+    /**
+     * 파일에 바이트배열을 append하는 메소드
+     * @param bytes 바이트배열 
+     * @param filePath 파일 경로
+     */
+    public void AppendBytesToFile(byte[] bytes, String filePath) {
+        try (FileOutputStream fos = new FileOutputStream(filePath, true)) { // true for append mode
+            fos.write(bytes);
+        } catch (IOException e) {
+            System.out.println("An error occurred while writing to the file: " + e.getMessage());
         }
     }
 }

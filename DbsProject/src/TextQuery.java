@@ -79,20 +79,35 @@ public class TextQuery {
                     _queryEvaluationEngine.SearchTupleWithPk(tableName, pkInfoForSearch);
                     break;
                 }
+                case 6:{
+                    List<String>tableNames = Process6_1(); 
+                    if (tableNames == null) {
+                        break; //테이블이 2개 이상 존재하지 않을 경우
+                    }
+                    List<Pair<String,String>> tableColumnNamePairs = Process6_2(tableNames); //Pair의 key: 테이블명, value: 컬럼명
+                    if(tableColumnNamePairs.isEmpty()){
+                        break; //컬럼 메타데이터가 없는 비정상적인 상황
+                    }
+                    
+                    //여기까지 모든 입력이 정상적이면, 실제 Hash-Equi-Join 연산 수행
+                    _queryEvaluationEngine.HashEquiJoin(tableColumnNamePairs);
+                    break;
+                }
                 default:
                     System.out.println("잘못된 입력");
                     break;  
             }
         }
     }
-      
     
+
+
     /**
      * 사용자에게 메뉴를 출력하는 함수
      */
     private void PrintMenu() {
         System.out.println("\n\n------------------------------------------------------------------------------------------------------");
-        System.out.println("0. 종료 1. 테이블 생성 2. 튜플 삽입 3. 튜플 삭제 4. 특정 테이블의 전체 튜플 검색 5.특정 테이블의 튜플 한 개 검색");
+        System.out.println("0. 종료 1. 테이블 생성 2. 튜플 삽입 3. 튜플 삭제 4. 특정 테이블의 전체 튜플 검색 5.특정 테이블의 튜플 한 개 검색 6.Hash-Equi-Join 연산");
         System.out.print("원하는 기능의 번호를 입력: ");
     }
     
@@ -268,5 +283,63 @@ public class TextQuery {
     }
     
     //endregion
+
+    //region '6. Hash-Equi-Join 연산' 관련 print 및 input처리 함수
+    private List<String> Process6_1() {
+        while(true) {
+            //현재 존재하는 테이블명들을 출력하고 true리턴. 없을시 false 리턴
+            if (_queryEvaluationEngine.PrintAllTableNames() == false) {
+                return null;
+            }
+
+            if (_queryEvaluationEngine.GetTableNum() < 2) {
+                System.out.println("테이블이 2개 이상 존재해야 Hash-Equi-Join 연산이 가능.");
+                return null;
+            }
+
+            //검색할 테이블명 2개를 입력받음
+            List<String> tableNames = _inputValidator.Get6_1Input();
+
+            //테이블이 존재하는지 확인
+            if (_queryEvaluationEngine.IsTableExist(tableNames.get(0)) && _queryEvaluationEngine.IsTableExist(tableNames.get(1))) {
+                return tableNames;
+            }
+            else {
+                System.out.println("올바른 테이블명을 다시 입력!!\n");
+            }
+        }
+    }
     
+    //Pair의 key: 테이블명, value: 컬럼명
+    private List<Pair<String,String>> Process6_2(List<String> tableNames){
+        //테이블의 컬럼 정보를 메타데이터로부터 가져와서 출력
+        LinkedHashMap<String,String> columnInfo1 = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
+        LinkedHashMap<String,String> columnInfo2 = new LinkedHashMap(); //key: 컬럼이름, value: 글자수 제한
+        
+        if(!_queryEvaluationEngine.PrintColumnNames(tableNames.get(0)) || !_queryEvaluationEngine.PrintColumnNames(tableNames.get(1))){ //컬럼 메타데이터가 없는 비정상적인 상황
+            return new ArrayList<>();
+        }
+        else{
+            columnInfo1 = _queryEvaluationEngine.GetColumnInfo(tableNames.get(0));
+            columnInfo2 = _queryEvaluationEngine.GetColumnInfo(tableNames.get(1));
+            if(columnInfo1.isEmpty() || columnInfo2.isEmpty()){ //컬럼 메타데이터가 없는 비정상적인 상황
+                return new ArrayList<>();
+            }
+        }
+        
+        //hash equi join에 사용할 첫번째 테이블의 컬럼명을 입력받음
+        String columnName1 = _inputValidator.Get6_2Input(tableNames.get(0), columnInfo1);
+        
+        //hash equi join에 사용할 두번째 테이블의 컬럼명을 입력받음
+        String columnName2 = _inputValidator.Get6_2Input(tableNames.get(1), columnInfo2);
+        
+        List<Pair<String,String>> tableColumnNamePairs = new ArrayList<>();
+        tableColumnNamePairs.add(new Pair<>(tableNames.get(0), columnName1));
+        tableColumnNamePairs.add(new Pair<>(tableNames.get(1), columnName2));
+        
+        return tableColumnNamePairs;
+    }
+
+    //endregion
 }
+

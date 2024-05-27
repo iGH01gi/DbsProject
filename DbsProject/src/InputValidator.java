@@ -2,7 +2,7 @@ import java.util.*;
 
 public class InputValidator {
     /**
-     * 사용자로부터 메뉴(0~5) 입력을 받는 함수
+     * 사용자로부터 메뉴(0~6) 입력을 받는 함수
      * @return 사용자가 입력한 메뉴 번호.<br> 
      * 잘못된 입력일경우 -1을 반환
      */
@@ -17,7 +17,7 @@ public class InputValidator {
             return -1;
         }
 
-        if (input < 0 || input > 5) {
+        if (input < 0 || input > 6) {
             return -1;
         }
         
@@ -368,5 +368,55 @@ public class InputValidator {
         }
     }
     
+    //endregion
+    
+    //region '6. Hash-Equi-Join' 관련 입력을 받는 함수들
+    
+    public List<String> Get6_1Input() {
+        Scanner scanner = new Scanner(System.in);
+        List<String> inputTables = new ArrayList<>();
+
+        while (true) {
+            System.out.print("Join할 첫 번째 테이블명을 입력: ");
+            String input = scanner.nextLine();
+
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                inputTables.add(input);
+                break;
+            }
+        }
+
+        while (true) {
+            System.out.print("Join할 두 번째 테이블명을 입력: ");
+            String input = scanner.nextLine();
+
+            if (input.length() > 30) {
+                System.out.println("30글자 이내로 다시 입력\n");
+            } else {
+                inputTables.add(input);
+                break;
+            }
+        }
+        
+        return inputTables;
+    }
+
+    public String Get6_2Input(String tableName, LinkedHashMap<String, String> columnInfo) {
+        System.out.printf("\nHash-Equi-Join에 사용할 "+tableName+"의 컬럼명을 입력:");
+        Scanner scanner = new Scanner(System.in);
+        String input = scanner.nextLine();
+        
+        while (true) {
+            if (!columnInfo.containsKey(input)) {
+                System.out.println("\n존재하지 않는 컬럼명입니다. 다시 입력:");
+                input = scanner.nextLine();
+            } else {
+                return input;
+            }
+        }
+    }
+
     //endregion
 }

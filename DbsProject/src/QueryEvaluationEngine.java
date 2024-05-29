@@ -626,7 +626,7 @@ public class QueryEvaluationEngine {
                         String columnValue = GetColumnValueFromRecord(record, columnName1, tableName1);
                         
                         //hash index에 columnValue 어떤것을 put했는지 출력 
-                        System.out.println("hash인덱스에 " + columnValue + "를 넣었음.");
+                        System.out.println(buildInputName+"의 인메모리 hash인덱스에 " + columnValue + "를 넣었음.");
                         
                         //hash index에 columnValue를 key로, record를 value로 list에 추가
                         if(!hashIndex.containsKey(columnValue)){
@@ -713,7 +713,7 @@ public class QueryEvaluationEngine {
             for(int j=0; j<blockingFactor; j++){
                 byte[] record = _bufferManager.ReadRecordFromBlock(block, recordLength, j); //block에서 레코드를 읽어옴
                 if(record != null && !_bufferManager.IsFreeRecord(record)){
-                    //TODO: 레코드의 컬럼값을 해시함수에 넣어서 파티션을 나누는 로직
+                    //레코드의 컬럼값을 해시함수에 넣어서 파티션을 나누는 로직
                     //record바이트배열에서 startIndex부터 hashColumnLength만큼의 바이트를 가져와서 해시함수에 넣음
                     byte[] hashColumnBytes = Arrays.copyOfRange(record, startIndex, startIndex + hashColumnLength);
                     int bucketNum = Math.abs(Arrays.hashCode(hashColumnBytes)) % _partitionNum;

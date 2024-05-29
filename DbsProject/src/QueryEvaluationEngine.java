@@ -559,6 +559,10 @@ public class QueryEvaluationEngine {
         
     }
 
+    /**
+     * 2개 테이블의 해시 조인 수행 및 결과 출력
+     * @param tableColumnNamePairs 테이블과 컬럼명 쌍 리스트(2개)
+     */
     public void HashEquiJoin(List<Pair<String, String>> tableColumnNamePairs) {
         
         String tableName1 = tableColumnNamePairs.get(0).getFirst();
@@ -572,6 +576,8 @@ public class QueryEvaluationEngine {
         int recordLength2 = GetRecordLength(tableName2);
         int blockingFactor2 = _bufferManager.BLOCK_SIZE / recordLength2;
         
+        List<byte[]> result = new ArrayList<>() ; //조인 결과를 저장할 바이트배열 리스트
+        
         //파티션 과정 (임시 파일 tempFiles폴더 산하에 '테이블명-part#' 형식으로 생성)
         Partitioning(tableName1, columnName1);
         Partitioning(tableName2, columnName2);
@@ -584,26 +590,27 @@ public class QueryEvaluationEngine {
         //probe input으로 사용할 파일들의 이름을 가져옴
         List<String> probeInputNames = _bufferManager.GetFilesWithPrefix(TEMP_FILE_PATH, tableName2+"-part");
 
+
         //probeInputNames에서 -part 뒤에 있는 숫자목록을 가져옴 
         List<Integer> probeInputNums = new ArrayList<>();
         for(String probeInputName : probeInputNames){
-            int probeInputNum = Integer.parseInt(probeInputName.substring(probeInputName.lastIndexOf("-part")+1));
+            int probeInputNum = Integer.parseInt(probeInputName.substring(probeInputName.lastIndexOf("-part")+5));
             probeInputNums.add(probeInputNum);
         }
         
         for(String buildInputName : buildInputNames){
             //buildInputName에서 -part 뒤에 있는 숫자를 가져옴
-            int buildInputNum = Integer.parseInt(buildInputName.substring(buildInputName.lastIndexOf("-part")+1));
+            int buildInputNum = Integer.parseInt(buildInputName.substring(buildInputName.lastIndexOf("-part")+5));
             
             //현재 buildInput의 파티션과 대응되는 probeInput의 파티션이 없다면 패스
             if(!probeInputNums.contains(buildInputNum)){
                 continue;
             }
             
-            //HashMap을 사용해서 인메모리 hash index를 구현함(key: join컬럼값, value: 해당 레코드 바이트배열)
-            Map<String,byte[]> hashIndex = new HashMap<>();
+            //HashMap을 사용해서 인메모리 hash index를 구현함(key: join컬럼값, value: 레코드 바이트배열 리스트(동일 컬럼값을 지닌 레코드가 복수개가 가능하기 때문))
+            Map<String,List<byte[]>> hashIndex = new HashMap<>();
             
-            int buildInputBlockNum = (int)GetFileSize(buildInputName) / _bufferManager.BLOCK_SIZE; //buildInputName의 block의 갯수를 구함
+            int buildInputBlockNum = (int)GetTempFileSize(buildInputName) / _bufferManager.BLOCK_SIZE; //buildInputName의 block의 갯수를 구함
 
             
             
@@ -612,36 +619,59 @@ public class QueryEvaluationEngine {
                 byte[] buildInputBlock = _bufferManager.ReadBlockFromTempFile(buildInputName, i);
                 
                 for(int j=0; j<blockingFactor1; j++) {
-                    byte[] record = _bufferManager.ReadRecordFromBlock(buildInputBlock, GetRecordLength(buildInputName), j);
+                    byte[] record = _bufferManager.ReadRecordFromBlock(buildInputBlock, GetRecordLength(tableName1), j);
                     
                     if(record != null && !_bufferManager.IsFreeRecord(record)){
-                        //record바이트배열에서 join 컬럼값을 가져와서 해시함수에 넣음 (key: join컬럼값, value: 해당 레코드 바이트배열)
-                        LinkedHashMap<String,String> columnInfo = GetColumnInfo(buildInputName);
+                        //record바이트배열에서 join컬럼값을 가져와서 해시함수에 넣는 로직
+                        String columnValue = GetColumnValueFromRecord(record, columnName1, tableName1);
                         
-                        //TODO: record바이트배열에서 join컬럼값을 가져와서 해시함수에 넣는 로직
+                        //hash index에 columnValue 어떤것을 put했는지 출력 
+                        System.out.println("hash인덱스에 " + columnValue + "를 넣었음.");
                         
+                        //hash index에 columnValue를 key로, record를 value로 list에 추가
+                        if(!hashIndex.containsKey(columnValue)){
+                            List<byte[]> recordList = new ArrayList<>();
+                            recordList.add(record);
+                            hashIndex.put(columnValue, recordList);
+                        } else {
+                            hashIndex.get(columnValue).add(record);
+                        }
                     }
                 }
             }
              
             //probe input의 모든 블록들을 루프를 돌면서 hash index를 이용해서 조인하는 과정
-            int probeInputBlockNum = (int)GetFileSize(tableName2+"-part"+buildInputNum) / _bufferManager.BLOCK_SIZE; //probeInputName의 block의 갯수를 구함
+            int probeInputBlockNum = (int)GetTempFileSize(tableName2+"-part"+buildInputNum) / _bufferManager.BLOCK_SIZE; //probeInputName의 block의 갯수를 구함
             
             for(int i=0; i<probeInputBlockNum; i++) {
                 byte[] probeInputBlock = _bufferManager.ReadBlockFromTempFile(tableName2 + "-part" + buildInputNum, i);
 
                 for (int j = 0; j < blockingFactor2; j++) {
-                    byte[] record = _bufferManager.ReadRecordFromBlock(probeInputBlock, GetRecordLength(tableName2 + "-part" + buildInputNum), j);
+                    byte[] probeInputrecord = _bufferManager.ReadRecordFromBlock(probeInputBlock, GetRecordLength(tableName2), j);
 
-                    if (record != null && !_bufferManager.IsFreeRecord(record)) {
+                    if (probeInputrecord != null && !_bufferManager.IsFreeRecord(probeInputrecord)) {
+                        //hash index를 이용해서 equi-join짝이 있는지 검증하는 부분
+                        String probeInputColumnValue = GetColumnValueFromRecord(probeInputrecord, columnName2, tableName2);
                         
+                        if(hashIndex.containsKey(probeInputColumnValue)) {
+                            for(int k=0; k<hashIndex.get(probeInputColumnValue).size(); k++) {
+                                //hash index에 동일 join컬럼값이 존재하면 조인한 결과를 저장
+                                byte[] buildInputRecord = hashIndex.get(probeInputColumnValue).get(k);
+
+                                //result 바이트배열리스트에 buildInputRecord바이트배열과 probeInputrecord바이트배열을 합친것을 add함
+                                byte[] joinedRecord = new byte[buildInputRecord.length + probeInputrecord.length];
+                                System.arraycopy(buildInputRecord, 0, joinedRecord, 0, buildInputRecord.length);
+                                System.arraycopy(probeInputrecord, 0, joinedRecord, buildInputRecord.length, probeInputrecord.length);
+                                result.add(joinedRecord);
+                            }
+                        }
                     }
                 }
             }
         }
         
-        //build input과 대응되는건 probe input
-        
+        //join된 최종 결과를 출력
+        PrintHashJoinResult(result, tableName1, tableName2);
     }
 
     /**
@@ -744,6 +774,66 @@ public class QueryEvaluationEngine {
                     }
                 }
             }
+        }
+    }
+    
+    public long GetTempFileSize(String tableName) {
+        File file = new File(TEMP_FILE_PATH + tableName);
+        return (long)file.length();
+    }
+    
+    /**
+     * 레코드에서 컬럼값을 가져오는 메소드
+     * @param record 레코드 바이트 배열
+     * @param columnName 값을 구하고자 하는 컬럼명
+     * @param tableName 테이블명
+     * @return 컬럼값(String)
+     */
+    public String GetColumnValueFromRecord(byte[] record, String columnName, String tableName) {
+        LinkedHashMap<String,String> columnInfo = GetColumnInfo(tableName);
+        int startIndex = 0;
+        for (Map.Entry<String, String> entry : columnInfo.entrySet()) {
+            if (entry.getKey().equals(columnName)) {
+                int columnLength = Integer.parseInt(entry.getValue());
+                byte[] columnBytes = Arrays.copyOfRange(record, startIndex, startIndex + columnLength);
+                String columnValue = new String(columnBytes, StandardCharsets.UTF_8).trim();
+                return columnValue;
+            }
+            startIndex += Integer.parseInt(entry.getValue());
+        }
+        return null;
+    }
+    
+    /**
+     * 해시 조인 결과를 출력하는 메소드
+     * @param result 조인 결과 바이트배열 리스트
+     * @param tableName1 조인할 테이블명1
+     * @param tableName2 조인할 테이블명2
+     */
+    public void PrintHashJoinResult(List<byte[]> result, String tableName1, String tableName2) {
+
+        //조인된 결과의 레코드 갯수 출력
+        System.out.println("\n조인된 결과의 레코드 갯수: " + result.size());
+        
+        LinkedHashMap<String,String> columnInfo1 = GetColumnInfo(tableName1);
+        LinkedHashMap<String,String> columnInfo2 = GetColumnInfo(tableName2);
+        
+        //컬럼명 순서대로 출력
+        for (Map.Entry<String, String> entry : columnInfo1.entrySet()) {
+            System.out.print(entry.getKey() + "  |  ");
+        }
+        for (Map.Entry<String, String> entry : columnInfo2.entrySet()) {
+            System.out.print(entry.getKey() + "  |  ");
+        }
+        System.out.println();
+        
+        
+        for(byte[] record : result){
+            //첫번째 테이블의 레코드 출력
+            PrintRecord(record, columnInfo1);
+            //두번째 테이블의 레코드 출력
+            PrintRecord(Arrays.copyOfRange(record, GetRecordLength(tableName1), record.length), columnInfo2);
+            System.out.println();
         }
     }
 }
